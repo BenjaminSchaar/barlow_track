@@ -1,0 +1,30 @@
+# wbfm.yaml
+
+# Made by Charles Fieseler
+# update:  conda env update -f wbfm.yaml
+
+# Intended to be used with the long-term support (lts) version of pytorch
+
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.8
+  - tsnecuda
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1  # The cluster has 12.4
+  - lightning
+  - tqdm
+  - matplotlib
+  - scikit-image
+  - scikit-learn
+  - zarr
+  - pandas
+  - pip:
+      - sacred
+      - ruamel.yaml
+      - wandb
+      #- pytorch3dunet  # Local
