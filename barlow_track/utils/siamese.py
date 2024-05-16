@@ -1,5 +1,5 @@
 import torch.nn as nn
-from pytorch3dunet.unet3d.buildingblocks import ExtResNetBlock, create_encoders
+from pytorch3dunet.unet3d.buildingblocks import ResNetBlockSE, create_encoders
 from pytorch3dunet.unet3d.utils import number_of_features_per_level
 
 
@@ -69,7 +69,8 @@ class SiameseResNet(nn.Module):
 
 class Abstract3DEncoder(nn.Module):
     """
-    From: https://github.com/wolny/pytorch-3dunet
+    From: https://github.com/wolny/pytorch-3dunet/blob/master/pytorch3dunet/unet3d/model.py
+    Based on: AbstractUNet
 
     Base class for standard and residual UNet BUT no decoders
 
@@ -111,8 +112,11 @@ class Abstract3DEncoder(nn.Module):
         assert len(f_maps) > 1, "Required at least 2 levels in the U-Net"
 
         # create encoder path
-        self.encoders = create_encoders(in_channels, f_maps, basic_module, conv_kernel_size, conv_padding, layer_order,
-                                        num_groups, pool_kernel_size)
+        self.encoders = create_encoders(in_channels=in_channels, f_maps=f_maps, basic_module=basic_module,
+                                        conv_kernel_size=conv_kernel_size, conv_padding=conv_padding,
+                                        conv_upscale=False, dropout_prob=0.0,  # New
+                                        layer_order=layer_order,
+                                        num_groups=num_groups, pool_kernel_size=pool_kernel_size, is3d=True)
 
         # in the last layer a 1×1 convolution reduces the number of output
         # channels to the number of labels
@@ -153,7 +157,7 @@ class ResidualEncoder3D(Abstract3DEncoder):
     def __init__(self, in_channels, crop_sz, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=5, conv_padding=1, embedding_dim=2048, **kwargs):
         super(ResidualEncoder3D, self).__init__(in_channels=in_channels,
-                                                basic_module=ExtResNetBlock,
+                                                basic_module=ResNetBlockSE,
                                                 crop_sz=crop_sz,
                                                 f_maps=f_maps,
                                                 layer_order=layer_order,
@@ -172,7 +176,7 @@ class ResidualClassifier3D(Abstract3DEncoder):
     def __init__(self, num_categories, in_channels, crop_sz, f_maps=64, layer_order='gcr',
                  num_groups=8, num_levels=5, conv_padding=1, embedding_dim=2048, **kwargs):
         super(ResidualClassifier3D, self).__init__(in_channels=in_channels,
-                                                   basic_module=ExtResNetBlock,
+                                                   basic_module=ResNetBlockSE,
                                                    crop_sz=crop_sz,
                                                    f_maps=f_maps,
                                                    layer_order=layer_order,
