@@ -1,0 +1,30 @@
+# Parameters for training the model
+
+projector: '2048-2048-256'
+embedding_dim: 2048
+lambd: 0.0051
+batch_size: 1
+weight_decay: 1e-6
+epochs: 100
+print_freq: 100
+rank: 0
+lr: 0.0001
+learning_rate_weights: 0.2
+learning_rate_biases: 0.0048
+lambd_obj: 2.0
+project_path: "/scratch/neurobiology/zimmer/fieseler/wbfm_projects/manually_annotated/original_training_data/bright_worm5/project_config.yaml"
+target_sz:
+  - 4
+  - 128
+  - 128
+num_frames: 200
+train_fraction: 0.8
+val_fraction: 0.1
+dryrun: false
+DEBUG: false
+
+# My new modification
+train_both_correlations: true
+
+# Metadata
+wandb_name: barlow-training-iclr
