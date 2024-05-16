@@ -18,6 +18,7 @@ from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_us
 from wbfm.utils.nn_utils.superglue import SuperGlueUnpacker
 from wbfm.utils.nn_utils.worm_with_classifier import WormWithSuperGlueClassifier
 from wbfm.utils.projects.finished_project_data import ProjectData
+from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.projects.utils_neuron_names import int2name_neuron
 
 
@@ -428,3 +429,27 @@ class WormTsneTracker:
         self.global_clusterer = all_clusters[0]
 
         return df_global
+
+
+def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
+    """
+    Uses tsne + hdbscan clusters on neuron feature space as a tracker
+
+    Parameters
+    ----------
+    project_config
+
+    Returns
+    -------
+
+    """
+
+    tracking_config = project_config.get_tracking_config()
+
+    # Track
+    tracker = WormTsneTracker.load_from_config(project_config)
+    df_combined, all_raw_dfs = tracker.track_using_overlapping_windows()
+
+    # Save
+    fname = "3-tracking/postprocessing/df_cluster_tracker.h5"
+    tracking_config.save_data_in_local_project(fname, df_combined, also_save_csv=True)
