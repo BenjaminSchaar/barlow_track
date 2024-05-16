@@ -67,11 +67,7 @@ def main(args):
 
         for epoch in range(0, args.epochs):
             for step, (y1, y2) in enumerate(loader, start=epoch * len(loader)):
-                # Needs to be outside the data loader because the batch dimension isn't added yet
-                y1, y2 = torch.transpose(y1, 0, 1).type('torch.FloatTensor'), torch.transpose(y2, 0, 1).type(
-                    'torch.FloatTensor')
-                y1 = y1.to(gpu)
-                y2 = y2.to(gpu)
+                y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
 
                 # adjust_learning_rate(args, optimizer, loader, step)
                 optimizer.zero_grad()
@@ -99,7 +95,8 @@ def main(args):
                             with torch.no_grad():
                                 c = model.calculate_correlation_matrix(y1, y2)
                                 save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
-                                fig = visualize_model_performance(c, save_fname=save_fname)
+                                fig = visualize_model_performance(c, save_fname=save_fname,
+                                                                  vmin=-0.5, vmax=1)
                                 run.log({"chart": fig})
 
             if args.rank == 0:
@@ -111,11 +108,8 @@ def main(args):
                 with torch.no_grad():
                     val_loss, val_loss_original, val_loss_transpose = 0, 0, 0
                     for val_step, (y1, y2) in enumerate(data_module.val_dataloader()):
-                        y1, y2 = torch.transpose(y1, 0, 1).type('torch.FloatTensor'), torch.transpose(y2, 0, 1).type(
-                            'torch.FloatTensor')
-                        y1 = y1.to(gpu)
-                        y2 = y2.to(gpu)
-                        loss, _, _ = model.forward(y1, y2)
+                        y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
+                        loss, loss_original, loss_transpose = model.forward(y1, y2)
                         val_loss += loss.item()
                         val_loss_original += loss_original.item()
                         val_loss_transpose += loss_transpose.item()
@@ -123,10 +117,26 @@ def main(args):
                 # wandb logging
                 run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
                 # Printing
-                stats = dict(epoch=epoch, val_loss=val_loss.item(), time=int(time.time() - start_time))
+                stats = dict(epoch=epoch, val_loss=val_loss, time=int(time.time() - start_time))
                 print(json.dumps(stats))
                 with open(stats_file, 'w') as f:
                     print(json.dumps(stats), file=f)
+
+        # Calculate the final test loss
+        test_loss, test_loss_original, test_loss_transpose = 0, 0, 0
+        for test_step, (y1, y2) in enumerate(data_module.test_dataloader()):
+            y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
+            loss, loss_original, loss_transpose = model.forward(y1, y2)
+            test_loss += loss.item()
+            test_loss_original += loss_original.item()
+            test_loss_transpose += loss_transpose.item()
+        # wandb logging
+        run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
+        # Printing
+        stats = dict(epoch=epoch, test_loss=test_loss, time=int(time.time() - start_time))
+        print(json.dumps(stats))
+        with open(stats_file, 'w') as f:
+            print(json.dumps(stats), file=f)
 
     # Final saving
     if args.rank == 0:
@@ -139,6 +149,15 @@ def main(args):
     fname = get_sequential_filename(args.project_dir + '/args.pickle')
     with open(fname, 'wb') as f:
         pickle.dump(args, f)
+
+
+def _format_vectors_on_gpu(y1, y2, gpu):
+    # Needs to be outside the data loader because the batch dimension isn't added yet
+    y1, y2 = torch.transpose(y1, 0, 1).type('torch.FloatTensor'), torch.transpose(y2, 0, 1).type(
+        'torch.FloatTensor')
+    y1 = y1.to(gpu)
+    y2 = y2.to(gpu)
+    return y1, y2
 
 
 if __name__ == "__main__":
