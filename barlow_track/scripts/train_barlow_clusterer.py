@@ -88,7 +88,9 @@ def main(args):
                             print(json.dumps(stats), file=f)
 
                         # wandb logging
-                        run.log({"loss": loss, "loss_original": loss_original, "loss_transpose": loss_transpose})
+                        run.log({"loss": loss.item(),
+                                 "loss_original": loss_original.item(),
+                                 "loss_transpose": loss_transpose.item()})
 
                         # More infrequently, plot embedding
                         if step % (10*args.print_freq) == 0:
@@ -113,6 +115,11 @@ def main(args):
                         val_loss += loss.item()
                         val_loss_original += loss_original.item()
                         val_loss_transpose += loss_transpose.item()
+                        # Plot validation embedding
+                        if val_step == 0:
+                            c = model.calculate_correlation_matrix(y1, y2)
+                            fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
+                            run.log({"validation_chart": fig})
 
                 # wandb logging
                 run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
