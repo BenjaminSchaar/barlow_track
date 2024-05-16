@@ -15,7 +15,7 @@ from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.projects.utils_filenames import pickle_load_binary
 from wbfm.utils.projects.utils_neuron_names import name2int_neuron_and_tracklet
-from wbfm.barlow_project.utils.track_using_clusters import WormTsneTracker
+from barlow_track.utils.track_using_clusters import WormTsneTracker
 
 
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
@@ -168,7 +168,7 @@ def plot_relative_accuracy(df_combined, results_subfolder, project_data, to_save
 
 def embed_using_barlow(gpu, model, project_data, target_sz):
     project_data.project_config.logger.info("Embedding using Barlow model")
-    from wbfm.barlow_project.utils.barlow import NeuronImageWithGTDataset
+    from barlow_track.utils.barlow import NeuronImageWithGTDataset
     num_frames = project_data.num_frames - 1
     dataset = NeuronImageWithGTDataset.load_from_project(project_data, num_frames, target_sz)
     names = dataset.which_neurons
@@ -185,8 +185,8 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
 
 
 def load_barlow_model(model_fname):
-    from wbfm.barlow_project.utils.barlow import BarlowTwins3d
-    from wbfm.barlow_project.utils.siamese import ResidualEncoder3D
+    from barlow_track.utils.barlow import BarlowTwins3d
+    from barlow_track.utils.siamese import ResidualEncoder3D
     state_dict = torch.load(model_fname)
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     args = pickle_load_binary(Path(model_fname).with_name('args.pickle'))

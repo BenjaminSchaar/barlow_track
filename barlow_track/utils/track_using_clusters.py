@@ -13,7 +13,7 @@ import matplotlib
 
 from wbfm.utils.external.utils_pandas import fill_missing_indices_with_nan
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching, \
-    combine_dataframes_using_mode, combine_dataframes_using_bipartite_matching, combine_and_rename_multiple_dataframes
+    combine_dataframes_using_mode, combine_and_rename_multiple_dataframes
 
 from wbfm.utils.nn_utils.superglue import SuperGlueUnpacker
 from wbfm.utils.nn_utils.worm_with_classifier import WormWithSuperGlueClassifier

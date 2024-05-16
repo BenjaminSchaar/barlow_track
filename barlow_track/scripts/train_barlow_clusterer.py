@@ -14,9 +14,9 @@ from matplotlib import pyplot as plt
 from pytorch_lightning.loggers import WandbLogger
 from ruamel.yaml import YAML
 
-from wbfm.barlow_project.utils.barlow import NeuronCropImageDataModule, BarlowTwins3d
-from wbfm.barlow_project.utils.barlow_visualize import visualize_model_performance
-from wbfm.barlow_project.utils.siamese import ResidualEncoder3D
+from barlow_track.utils.barlow import NeuronCropImageDataModule, BarlowTwins3d
+from barlow_track.utils.barlow_visualize import visualize_model_performance
+from barlow_track.utils.siamese import ResidualEncoder3D
 from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.utils_filenames import get_sequential_filename
 

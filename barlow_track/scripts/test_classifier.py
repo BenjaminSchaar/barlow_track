@@ -10,8 +10,8 @@ from matplotlib import pyplot as plt
 from wbfm.utils.nn_utils.utils_testing import test_trained_classifier, plot_accuracy, \
     test_trained_embedding_matcher
 from wbfm.utils.projects.utils_filenames import add_name_suffix
-from wbfm.barlow_project.utils.data_loading import NeuronImageFeaturesDataModule, FullVolumeNeuronImageFeaturesDataset
-from wbfm.barlow_project.utils.model_image_classifier import NeuronEmbeddingModel
+from barlow_track.utils.data_loading import NeuronImageFeaturesDataModule, FullVolumeNeuronImageFeaturesDataset
+from barlow_track.utils.model_image_classifier import NeuronEmbeddingModel
 from wbfm.utils.projects.finished_project_data import ProjectData
 from sacred import Experiment
 

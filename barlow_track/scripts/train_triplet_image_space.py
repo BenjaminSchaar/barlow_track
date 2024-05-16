@@ -8,10 +8,10 @@ from wbfm.utils.projects.utils_filenames import get_sequential_filename
 from tqdm.auto import tqdm
 import torch.nn as nn
 import torch
-from wbfm.barlow_project.utils.data_loading import NeuronTripletDataset
+from barlow_track.utils.data_loading import NeuronTripletDataset
 from torch.utils.data import DataLoader
 import pandas as pd
-from wbfm.barlow_project.utils.siamese import Siamese
+from barlow_track.utils.siamese import Siamese
 from wbfm.utils.projects.finished_project_data import ProjectData
 import wandb
 from torch.utils.data import random_split
