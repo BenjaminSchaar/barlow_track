@@ -8,13 +8,14 @@ import torchio as tio
 import torchvision.transforms as transforms
 from pytorch_lightning.core.datamodule import LightningDataModule
 from tqdm.auto import tqdm
-from barlow_track.utils.data_loading import get_bbox_data_for_volume, get_bbox_data_for_volume_only_labeled
 from torch.utils.data.dataset import random_split
 from torch.utils.data import Dataset
 from typing import Optional
 from torch.utils.data.dataloader import DataLoader
 from barlow_track.utils.siamese import Siamese
 import math
+
+from barlow_track.utils.data_loading import get_bbox_data_for_volume, get_bbox_data_for_volume_only_labeled
 
 
 def off_diagonal(x):

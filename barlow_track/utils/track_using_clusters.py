@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from backports.cached_property import cached_property
 from matplotlib import pyplot as plt
-from sklearn.decomposition import TruncatedSVD
 from tqdm.auto import tqdm
 from hdbscan import HDBSCAN
 import hdbscan
@@ -14,10 +13,6 @@ import matplotlib
 from wbfm.utils.external.utils_pandas import fill_missing_indices_with_nan
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching, \
     combine_dataframes_using_mode, combine_and_rename_multiple_dataframes
-
-from wbfm.utils.nn_utils.superglue import SuperGlueUnpacker
-from wbfm.utils.nn_utils.worm_with_classifier import WormWithSuperGlueClassifier
-from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.projects.utils_neuron_names import int2name_neuron
 
@@ -108,35 +103,6 @@ class WormTsneTracker:
     @property
     def global_vol_ind(self):
         return np.linspace(0, self.num_frames, self.n_volumes_per_window, dtype=int, endpoint=False)
-
-    @staticmethod
-    def load_from_config(project_config, svd_components=50, ):
-        project_data = ProjectData.load_final_project_data_from_config(project_config, to_load_frames=True)
-
-        # Use old tracker just as a feature-space embedder
-        frames_old = project_data.raw_frames
-        unpacker = SuperGlueUnpacker(project_data, 10)
-        tracker_old = WormWithSuperGlueClassifier(superglue_unpacker=unpacker)
-
-        print("Embedding all neurons in feature space...")
-        X = []
-        linear_ind_to_local = []
-        offset = 0
-        for i in tqdm(range(project_data.num_frames)):
-            this_frame = frames_old[i]
-            this_frame_embedding = tracker_old.embed_target_frame(this_frame)
-            this_x = this_frame_embedding.squeeze().cpu().numpy().T
-            X.append(this_x)
-
-            linear_ind_to_local.append(offset + np.arange(this_x.shape[0]))
-            offset += this_x.shape[0]
-
-        X = np.vstack(X).astype(float)
-        alg = TruncatedSVD(n_components=svd_components)
-        X_svd = alg.fit_transform(X)
-
-        obj = WormTsneTracker(X_svd, linear_ind_to_local, svd_components=svd_components)
-        return obj
 
     @property
     def num_frames(self):
@@ -433,7 +399,7 @@ class WormTsneTracker:
 
 def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
     """
-    Uses tsne + hdbscan clusters on neuron feature space as a tracker
+    Uses tsne + hdbscan clusters on SUPERGLUE neuron feature space as a tracker
 
     Parameters
     ----------

@@ -1,4 +1,6 @@
 # Load a project and data, then train a Siamese network
+# Note: superceded by barlow twins workflow
+
 import logging
 import os
 import numpy as np
@@ -8,7 +10,7 @@ from wbfm.utils.general.utils_filenames import get_sequential_filename
 from tqdm.auto import tqdm
 import torch.nn as nn
 import torch
-from barlow_track.utils.data_loading import NeuronTripletDataset
+from wbfm.utils.nn_utils.data_loading import NeuronTripletDataset
 from torch.utils.data import DataLoader
 import pandas as pd
 from barlow_track.utils.siamese import Siamese
