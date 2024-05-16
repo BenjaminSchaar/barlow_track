@@ -107,6 +107,26 @@ def main(args):
                 state = dict(epoch=epoch + 1, model=model.state_dict(),
                              optimizer=optimizer.state_dict())
                 torch.save(state, checkpoint_file)
+                # Calculate validation loss
+                with torch.no_grad():
+                    val_loss, val_loss_original, val_loss_transpose = 0, 0, 0
+                    for val_step, (y1, y2) in enumerate(data_module.val_dataloader()):
+                        y1, y2 = torch.transpose(y1, 0, 1).type('torch.FloatTensor'), torch.transpose(y2, 0, 1).type(
+                            'torch.FloatTensor')
+                        y1 = y1.to(gpu)
+                        y2 = y2.to(gpu)
+                        loss, _, _ = model.forward(y1, y2)
+                        val_loss += loss.item()
+                        val_loss_original += loss_original.item()
+                        val_loss_transpose += loss_transpose.item()
+
+                # wandb logging
+                run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
+                # Printing
+                stats = dict(epoch=epoch, val_loss=val_loss.item(), time=int(time.time() - start_time))
+                print(json.dumps(stats))
+                with open(stats_file, 'w') as f:
+                    print(json.dumps(stats), file=f)
 
     # Final saving
     if args.rank == 0:
