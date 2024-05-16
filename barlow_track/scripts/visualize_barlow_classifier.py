@@ -5,6 +5,7 @@ import torch
 from barlow_track.utils.barlow import BarlowTwins3d, NeuronCropImageDataModule
 from barlow_track.utils.barlow_visualize import visualize_model_performance
 from barlow_track.utils.siamese import ResidualEncoder3D
+
 from wbfm.utils.projects.finished_project_data import ProjectData
 
 if __name__ == "__main__":

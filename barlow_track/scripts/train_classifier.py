@@ -6,13 +6,13 @@ import sacred
 import torch
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
-
-from wbfm.utils.projects.utils_filenames import get_sequential_filename
-from barlow_track.utils.data_loading import NeuronImageFeaturesDataModule
-from barlow_track.utils.model_image_classifier import NeuronEmbeddingModel
-from wbfm.utils.projects.finished_project_data import ProjectData
 import wandb
 from sacred import Experiment
+
+from barlow_track.utils.data_loading import NeuronImageFeaturesDataModule
+from barlow_track.utils.model_image_classifier import NeuronEmbeddingModel
+from wbfm.utils.general.utils_filenames import get_sequential_filename
+from wbfm.utils.projects.finished_project_data import ProjectData
 
 # !wandb login
 

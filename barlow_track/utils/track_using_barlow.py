@@ -13,7 +13,7 @@ from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_us
 from wbfm.utils.performance.comparing_ground_truth import calculate_accuracy_from_dataframes
 from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
-from wbfm.utils.projects.utils_filenames import pickle_load_binary
+from wbfm.utils.general.utils_filenames import pickle_load_binary
 from wbfm.utils.projects.utils_neuron_names import name2int_neuron_and_tracklet
 from barlow_track.utils.track_using_clusters import WormTsneTracker
 

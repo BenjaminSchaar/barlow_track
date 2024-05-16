@@ -14,7 +14,7 @@ from barlow_track.utils.model_image_classifier import NeuronEmbeddingModel
 from sacred import Experiment
 
 from wbfm.utils.projects.finished_project_data import ProjectData
-from wbfm.utils.projects.utils_filenames import add_name_suffix
+from wbfm.utils.general.utils_filenames import add_name_suffix
 
 # !wandb login
 

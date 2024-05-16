@@ -4,7 +4,7 @@ import os
 import numpy as np
 import torch.optim as optim
 from wbfm.utils.nn_utils.losses import ArcMarginProduct
-from wbfm.utils.projects.utils_filenames import get_sequential_filename
+from wbfm.utils.general.utils_filenames import get_sequential_filename
 from tqdm.auto import tqdm
 import torch.nn as nn
 import torch
