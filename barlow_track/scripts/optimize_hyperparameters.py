@@ -14,19 +14,20 @@ from submitit import AutoExecutor, LocalJob, DebugJob
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
-DEBUG = True
+DEBUG = False  # Set to True to run a small number of epochs for debugging
 
 # Full training script
 
 # Set up baseline parameters; load from template yaml file
 fname = '/lisc/scratch/neurobiology/zimmer/wbfm/code/barlow_track/barlow_track/barlow_project_template/train_config.yaml'
 baseline_params = YAML().load(open(fname))
-experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
 if DEBUG:
+    experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search_debug'
     baseline_params['wandb_name'] = 'barlow-hyperparameter-search-debug'
     baseline_params['num_frames'] = 20
     baseline_params['epochs'] = 2
 else:
+    experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
     baseline_params['wandb_name'] = 'barlow-hyperparameter-search'
     baseline_params['epochs'] = 50
 
@@ -45,7 +46,9 @@ ax_client.create_experiment(
     parameters=[
         {"name": "lr", "type": "range", "bounds": [1e-6, 1e-4], "log_scale": True},
         {"name": "learning_rate_weights", "type": "range", "bounds": [0.1, 10.0], "log_scale": True},
-        {"name": "lambd_obj", "type": "range", "bounds": [0.0, 5.0]},
+        {"name": "embedding_dim", "type": "range", "bounds": [256, 2048], "log_scale": True, "value_type": "int"},
+        # {"name": "lambd_obj", "type": "range", "bounds": [0.0, 5.0]},  # Optimizing this affects the loss function
+        # {"name": "train_both_correlations", "type": "choice", "values": [True, False], "value_type": "bool"},
     ],
     objectives={"result": ObjectiveProperties(minimize=True)},
 )
