@@ -190,6 +190,7 @@ def load_barlow_model(model_fname):
     from barlow_track.utils.siamese import ResidualEncoder3D
     state_dict = torch.load(model_fname)
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    logging.info(f"Using device: {gpu}")
     args = pickle_load_binary(Path(model_fname).with_name('args.pickle'))
     target_sz = np.array([4, 128, 128])
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
