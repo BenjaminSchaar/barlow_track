@@ -26,6 +26,7 @@ if DEBUG:
     baseline_params['wandb_name'] = 'barlow-hyperparameter-search-debug'
     baseline_params['num_frames'] = 20
     baseline_params['epochs'] = 2
+    baseline_params['print_freq'] = 10
 else:
     experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
     baseline_params['wandb_name'] = 'barlow-hyperparameter-search'
