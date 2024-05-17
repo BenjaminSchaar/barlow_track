@@ -61,7 +61,7 @@ if DEBUG:
 else:
     cluster = 'slurm'
 executor = AutoExecutor(folder="/tmp/submitit_runs", cluster=cluster)
-executor.update_parameters(slurm_time=60*12)
+executor.update_parameters(slurm_time=10 if DEBUG else 60)
 executor.update_parameters(cpus_per_task=4)
 executor.update_parameters(slurm_partition="basic,gpu")
 executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
@@ -69,8 +69,8 @@ executor.update_parameters(gpus_per_node=1)
 executor.update_parameters(slurm_gres="shard:32")
 
 
-total_budget = 10
-num_parallel_jobs = 3
+total_budget = 100
+num_parallel_jobs = 10
 
 jobs = []
 submitted_jobs = 0
@@ -108,7 +108,7 @@ while submitted_jobs < total_budget or jobs:
 
     # Sleep for a bit before checking the jobs again to avoid overloading the cluster.
     # If you have a large number of jobs, consider adding a sleep statement in the job polling loop aswell.
-    time.sleep(10)
+    time.sleep(60)
 
 best_parameters, (means, covariances) = ax_client.get_best_parameters()
 print(f'Best set of parameters: {best_parameters}')
