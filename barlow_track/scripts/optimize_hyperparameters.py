@@ -15,6 +15,10 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
 DEBUG = False  # Set to True to run a small number of epochs for debugging
+LOCAL = True  # Set to True to run locally
+
+if DEBUG:
+    LOCAL = True
 
 # Full training script
 
@@ -29,8 +33,11 @@ if DEBUG:
     baseline_params['print_freq'] = 10
 else:
     experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
-    baseline_params['wandb_name'] = 'barlow-hyperparameter-search'
-    baseline_params['epochs'] = 50
+    baseline_params['epochs'] = 30
+    if LOCAL:
+        baseline_params['wandb_name'] = 'barlow-hyperparameter-search-local'
+    else:
+        baseline_params['wandb_name'] = 'barlow-hyperparameter-search'
 
 
 def evaluate(parameters):
@@ -57,17 +64,19 @@ ax_client.create_experiment(
 # Set up SubmitIt
 # Log folder and cluster. Specify cluster='local' or cluster='debug' to run the jobs locally during development.
 # When we're are ready for deployment, switch to cluster='slurm'
-if DEBUG:
-    cluster = 'debug'
+if LOCAL:
+    executor = AutoExecutor(folder="/tmp/submitit_runs", cluster='debug')
 else:
-    cluster = 'slurm'
-executor = AutoExecutor(folder="/tmp/submitit_runs", cluster=cluster)
+    # Can't use /tmp/submitit_runs because the cluster can't access it
+    # https://github.com/facebookincubator/submitit/blob/main/docs/tips.md
+    executor = AutoExecutor(folder=experiment_parent_folder, cluster='slurm')
 executor.update_parameters(timeout_min=60 * 12)
-executor.update_parameters(slurm_time="0-06:00:00")
-executor.update_parameters(cpus_per_task=4)
-executor.update_parameters(slurm_partition="basic,gpu")
-executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
-executor.update_parameters(slurm_gres="gpu:1")
+if not LOCAL:
+    executor.update_parameters(slurm_time="0-06:00:00")
+    executor.update_parameters(cpus_per_task=4)
+    executor.update_parameters(slurm_partition="basic,gpu")
+    executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
+    executor.update_parameters(slurm_gres="gpu:1")
 
 
 total_budget = 10 if DEBUG else 100
@@ -82,8 +91,8 @@ while submitted_jobs < total_budget or jobs:
         # Local and debug jobs don't run until .result() is called.
         if job.done() or type(job) in [LocalJob, DebugJob]:
             # The log file isn't being produced, so print the stdout instead
-            print(job.stdout())
-            print(job.stderr())
+            # print(job.stdout())
+            # print(job.stderr())
             result = job.result()
             ax_client.complete_trial(trial_index=trial_index, raw_data=result)
             jobs.remove((job, trial_index))
