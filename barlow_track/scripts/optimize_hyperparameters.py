@@ -66,12 +66,11 @@ executor.update_parameters(slurm_time=20 if DEBUG else 720)
 executor.update_parameters(cpus_per_task=4)
 executor.update_parameters(slurm_partition="basic,gpu")
 executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
-executor.update_parameters(gpus_per_node=1)
-executor.update_parameters(slurm_gres="shard:32")
+executor.update_parameters(slurm_gres="gpu:1")
 
 
-total_budget = 100
-num_parallel_jobs = 10
+total_budget = 10 if DEBUG else 100
+num_parallel_jobs = 3 if DEBUG else 10
 
 jobs = []
 submitted_jobs = 0
