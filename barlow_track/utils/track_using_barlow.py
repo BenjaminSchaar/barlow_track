@@ -192,7 +192,7 @@ def load_barlow_model(model_fname):
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {gpu}")
     args = pickle_load_binary(Path(model_fname).with_name('args.pickle'))
-    target_sz = np.array([4, 128, 128])
+    target_sz = np.array([4, 128, 128])  # Should be loaded from the args
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
     model.load_state_dict(state_dict)
