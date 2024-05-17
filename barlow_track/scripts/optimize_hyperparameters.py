@@ -15,7 +15,7 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
 DEBUG = False  # Set to True to run a small number of epochs for debugging
-LOCAL = True  # Set to True to run locally
+LOCAL = False  # Set to True to run locally
 
 if DEBUG:
     LOCAL = True
