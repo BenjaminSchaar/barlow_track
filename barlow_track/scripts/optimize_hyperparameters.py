@@ -1,6 +1,6 @@
 # Use the Ax library to optimize hyperparameters
 # See: https://ax.dev/tutorials/submitit.html
-
+import os
 import time
 from types import SimpleNamespace
 
@@ -21,6 +21,7 @@ DEBUG = True
 # Set up baseline parameters; load from template yaml file
 fname = '/lisc/scratch/neurobiology/zimmer/wbfm/code/barlow_track/barlow_track/barlow_project_template/train_config.yaml'
 baseline_params = YAML().load(open(fname))
+experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
 if DEBUG:
     baseline_params['wandb_name'] = 'barlow-hyperparameter-search-debug'
     baseline_params['num_frames'] = 20
@@ -32,7 +33,6 @@ else:
 
 def evaluate(parameters):
     # Add the baseline parameters
-    parameters = {**baseline_params, **parameters}
     args = SimpleNamespace(**parameters)
     test_losses = train_barlow_network(args)
     return {"result": test_losses['test_loss']}
@@ -58,12 +58,12 @@ if DEBUG:
 else:
     cluster = 'slurm'
 executor = AutoExecutor(folder="/tmp/submitit_runs", cluster=cluster)
-executor.update_parameters(time=60*12)
+executor.update_parameters(slurm_time=60*12)
 executor.update_parameters(cpus_per_task=4)
-executor.update_parameters(partition="basic,gpu")
-executor.update_parameters(job_name="barlow_hyperparameter_search")
+executor.update_parameters(slurm_partition="basic,gpu")
+executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
 executor.update_parameters(gpus_per_node=1)
-executor.update_parameters(gres="shard:32")
+executor.update_parameters(slurm_gres="shard:32")
 
 
 total_budget = 10
@@ -85,6 +85,16 @@ while submitted_jobs < total_budget or jobs:
     trial_index_to_param, _ = ax_client.get_next_trials(
         max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
     for trial_index, parameters in trial_index_to_param.items():
+        # Make a new folder in the parent folder
+        this_folder = os.path.join(experiment_parent_folder, f"trial_{trial_index}")
+        os.makedirs(this_folder, exist_ok=True)
+        os.makedirs(os.path.join(this_folder, 'log'), exist_ok=True)
+        os.makedirs(os.path.join(this_folder, 'checkpoints'), exist_ok=True)
+        parameters['project_dir'] = this_folder
+        # Add the baseline parameters, and save in this folder
+        parameters = {**baseline_params, **parameters}
+        YAML().dump(parameters, open(os.path.join(this_folder, 'train_config.yaml'), 'w'))
+        # Actually submit
         job = executor.submit(evaluate, parameters)
         submitted_jobs += 1
         jobs.append((job, trial_index))
