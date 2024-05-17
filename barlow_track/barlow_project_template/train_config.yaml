@@ -12,7 +12,7 @@ lr: 0.0001
 learning_rate_weights: 0.2
 learning_rate_biases: 0.0048
 lambd_obj: 2.0
-project_path: "/scratch/neurobiology/zimmer/fieseler/wbfm_projects/manually_annotated/original_training_data/bright_worm5/project_config.yaml"
+project_path: "/lisc/scratch/neurobiology/zimmer/fieseler/wbfm_projects_future/barlow_tests/ZIM2165_Gcamp7b_worm1-2022_11_28/project_config.yaml"
 target_sz:
   - 4
   - 128

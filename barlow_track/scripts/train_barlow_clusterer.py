@@ -22,7 +22,7 @@ from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.general.utils_filenames import get_sequential_filename
 
 
-def main(args):
+def train_barlow_network(args):
     # Set up logger
     wandb.login()
 
@@ -164,6 +164,11 @@ def main(args):
     with open(fname, 'wb') as f:
         pickle.dump(args, f)
 
+    print("Training complete")
+    # Package losses into a dictionary and return
+    test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
+    return test_losses
+
 
 def _format_vectors_on_gpu(y1, y2, gpu):
     # Needs to be outside the data loader because the batch dimension isn't added yet
@@ -192,4 +197,4 @@ if __name__ == "__main__":
     cfg['project_dir'] = str(Path(config_fname).parent)
     args = SimpleNamespace(**cfg)
     # Run training code
-    main(args)
+    train_barlow_network(args)
