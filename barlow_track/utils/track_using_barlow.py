@@ -49,11 +49,12 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         # The default folder is built from the model fname, but removes the "checkpoint_" prefix
         # Also if it is a full path, just take the last foldername
         if Path(model_fname).is_absolute():
-            results_subfolder = os.path.split(model_fname)[-2]
+            results_subfolder = str(Path(model_fname).parent.stem)
         else:
-            results_subfolder = model_fname
+            results_subfolder = str(model_fname)
         results_subfolder = results_subfolder.replace('checkpoint_', '')
         results_subfolder = f'3-tracking/{results_subfolder}'
+        print(f"Output subfolder for results: {results_subfolder}")
 
     if not isinstance(project_config, ModularProjectConfig):
         project_config = ModularProjectConfig(str(project_config))
