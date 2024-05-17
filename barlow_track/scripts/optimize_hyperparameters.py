@@ -71,7 +71,7 @@ executor.update_parameters(slurm_gres="gpu:1")
 
 
 total_budget = 10 if DEBUG else 100
-num_parallel_jobs = 3 if DEBUG else 10
+num_parallel_jobs = 3 if DEBUG else 1
 
 jobs = []
 submitted_jobs = 0
@@ -81,6 +81,9 @@ while submitted_jobs < total_budget or jobs:
         # Poll if any jobs completed
         # Local and debug jobs don't run until .result() is called.
         if job.done() or type(job) in [LocalJob, DebugJob]:
+            # The log file isn't being produced, so print the stdout instead
+            print(job.stdout())
+            print(job.stderr())
             result = job.result()
             ax_client.complete_trial(trial_index=trial_index, raw_data=result)
             jobs.remove((job, trial_index))
