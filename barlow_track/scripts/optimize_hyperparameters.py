@@ -62,7 +62,7 @@ if DEBUG:
 else:
     cluster = 'slurm'
 executor = AutoExecutor(folder="/tmp/submitit_runs", cluster=cluster)
-executor.update_parameters(slurm_time=20 if DEBUG else 720)
+executor.update_parameters(slurm_time="0-6:00:00")
 executor.update_parameters(cpus_per_task=4)
 executor.update_parameters(slurm_partition="basic,gpu")
 executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
