@@ -14,6 +14,7 @@ from typing import Optional
 from torch.utils.data.dataloader import DataLoader
 from barlow_track.utils.siamese import Siamese
 import math
+import logging
 
 from barlow_track.utils.data_loading import get_bbox_data_for_volume, get_bbox_data_for_volume_only_labeled
 
