@@ -48,6 +48,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     """
     if model_fname is None:
         model_fname = 'checkpoint_barlow_small_projector'
+        project_config.logger.warning(f"Using default network name: {model_fname}")
     if results_subfolder is None:
         # The default folder is built from the model fname, but removes the "checkpoint_" prefix
         # Also if it is a full path, just take the last foldername
