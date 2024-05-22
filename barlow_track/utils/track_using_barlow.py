@@ -213,7 +213,7 @@ def build_embedding_metadata(all_embeddings, project_data):
     linear_ind_to_raw_neuron_ind = {}
     linear_ind_to_gt_ind = {}
     i_linear_ind = 0
-    for name, vols_all_times in tqdm(all_embeddings.items()):
+    for name, vols_all_times in all_embeddings.items():
         t_list = list(vols_all_times.keys())
         vols_array = np.vstack(list(vols_all_times.values()))
 
