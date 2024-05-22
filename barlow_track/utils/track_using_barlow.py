@@ -35,7 +35,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     Parameters
     ----------
     project_config
-    model_fname
+    model_fname - the exact name of the model file, or the full path to the model file
+        Example: /scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search/trial_0/resnet50-1.pth
     results_subfolder
     to_plot_relative_accuracy
 
