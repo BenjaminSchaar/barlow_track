@@ -203,7 +203,6 @@ class NeuronImageWithGTDataset(Dataset):
     def __init__(self, dict_of_neurons_of_volumes, dict_of_ids_of_volumes, which_neurons):
         # In order to synchronize the normalization used
         self._transform = Transform()
-        @torch.no_grad
         def _normalize(x):
             # Note: applied to crops, not full volumes
             t = self._transform.final_normalization

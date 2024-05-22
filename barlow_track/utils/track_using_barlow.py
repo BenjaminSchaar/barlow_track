@@ -104,14 +104,15 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             folder_fname = '/home/charles/Current_work/repos/dlc_for_wbfm/wbfm/notebooks/nn_ideas/'
             fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
 
-        gpu, model, target_sz = load_barlow_model(fname)
-        model.eval()
+        with torch.inference_mode():
+            gpu, model, target_sz = load_barlow_model(fname)
+            model.eval()
 
-        # Embed using the model
-        all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz)
+            # Embed using the model
+            all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz)
 
-        linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices = build_embedding_metadata(
-            all_embeddings, project_data)
+            linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices = build_embedding_metadata(
+                all_embeddings, project_data)
 
         svd_components = 50
         project_config.logger.info(f"Truncating feature space using {svd_components} PCA components")
