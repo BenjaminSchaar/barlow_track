@@ -162,6 +162,7 @@ class LARS(optim.Optimizer):
 class Transform:
     def __init__(self):
         self.final_normalization = tio.RescaleIntensity(percentiles=(5, 100))
+        self.final_normalization_no_copy = tio.RescaleIntensity(percentiles=(5, 100), copy=False)
 
         self.transform = tio.transforms.Compose([
             # tio.RandomFlip(axes=(1, 2), p=0.1),  # Do not flip z
@@ -205,7 +206,7 @@ class NeuronImageWithGTDataset(Dataset):
         self._transform = Transform()
         def _normalize(x):
             # Note: applied to crops, not full volumes
-            t = self._transform.final_normalization
+            t = self._transform.final_normalization_no_copy
             return t(torch.as_tensor(x.astype(float), dtype=torch.float32))
 
         logging.info("Normalizing data, can take a while")
@@ -226,6 +227,7 @@ class NeuronImageWithGTDataset(Dataset):
 
     @staticmethod
     def load_from_project(project_data, num_frames, target_sz):
+        # TODO: refactor to be a lazy loader of the cropped data
         project_data.project_config.logger.info("Loading image data from project")
         if num_frames is None:
             num_frames = project_data.num_frames
