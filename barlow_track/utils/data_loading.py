@@ -34,7 +34,7 @@ def get_bbox_data_for_volume_only_labeled(project_data, t, target_sz=np.array([8
     if which_neurons is None:
         which_neurons = project_data.finished_neuron_names()
     if which_neurons is None:
-        logging.warning("Found no explicitly tracked neurons, assuming all are correct")
+        project_data.project_config.logger.warning("Found no explicitly tracked neurons, assuming all are correct")
         which_neurons = project_data.neuron_names
 
     # Get the tracked mask indices, with a mapping from their neuron name
@@ -53,10 +53,10 @@ def get_bbox_data_for_volume_only_labeled(project_data, t, target_sz=np.array([8
     sz = project_data.red_data.shape
 
     for p in props:
-        bbox = p.bbox
         this_label = p.label
         if this_label not in tracked_segs:
             continue
+        bbox = p.bbox
 
         this_name = seg2name[this_label]
         dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)

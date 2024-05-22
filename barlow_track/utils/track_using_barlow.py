@@ -171,12 +171,12 @@ def plot_relative_accuracy(df_combined, results_subfolder, project_data, to_save
 
 
 def embed_using_barlow(gpu, model, project_data, target_sz):
-    project_data.project_config.logger.info("Embedding using Barlow model")
     from barlow_track.utils.barlow import NeuronImageWithGTDataset
     num_frames = project_data.num_frames - 1
     dataset = NeuronImageWithGTDataset.load_from_project(project_data, num_frames, target_sz)
     names = dataset.which_neurons
     all_embeddings = defaultdict(dict)
+    project_data.project_config.logger.info("Embedding using Barlow model")
     with torch.no_grad():
         for t, (batch, ids) in tqdm(enumerate(dataset), total=len(dataset)):
             for name in names:

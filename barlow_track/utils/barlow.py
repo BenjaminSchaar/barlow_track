@@ -204,8 +204,9 @@ class NeuronImageWithGTDataset(Dataset):
         # Note: that was applied to crops, not full volumes
         t = tio.RescaleIntensity(percentiles=(5, 100))
 
+        logging.info("Normalizing data, can take a while")
         self.dict_all_volume_crops = {i: t(torch.as_tensor(this_vol.astype(float), dtype=torch.float32)) for i, this_vol in
-                                      dict_of_neurons_of_volumes.items()}
+                                      tqdm(dict_of_neurons_of_volumes.items())}
         self.dict_of_ids_of_volumes = dict_of_ids_of_volumes
         self.which_neurons = which_neurons
 
@@ -221,7 +222,7 @@ class NeuronImageWithGTDataset(Dataset):
 
     @staticmethod
     def load_from_project(project_data, num_frames, target_sz):
-        project_data.project_config.logger.info("Loading dataset from project")
+        project_data.project_config.logger.info("Loading image data from project")
         if num_frames is None:
             num_frames = project_data.num_frames
 
