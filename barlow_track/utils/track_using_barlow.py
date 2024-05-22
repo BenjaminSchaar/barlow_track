@@ -55,7 +55,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             results_subfolder = str(model_fname)
         results_subfolder = results_subfolder.replace('checkpoint_', '')
         results_subfolder = f'3-tracking/{results_subfolder}'
-        print(f"Output subfolder for results: {results_subfolder}")
+        project_config.logger.info(f"Output subfolder for results: {results_subfolder}")
 
     if not isinstance(project_config, ModularProjectConfig):
         project_config = ModularProjectConfig(str(project_config))
@@ -114,6 +114,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             all_embeddings, project_data)
 
         svd_components = 50
+        project_config.logger.info(f"Truncating feature space using {svd_components} PCA components")
         X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
         alg = TruncatedSVD(n_components=svd_components)
         X_svd = alg.fit_transform(X)
@@ -133,6 +134,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                   subfolder=results_subfolder)
 
     # Do the clustering
+    project_config.logger.info("Running: track_using_global_clusterer")
     df_combined = tracker.track_using_global_clusterer()
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
@@ -193,6 +195,7 @@ def load_barlow_model(model_fname):
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {gpu}")
     args = pickle_load_binary(Path(model_fname).with_name('args.pickle'))
+    logging.info(f"Found args: {args}")
     target_sz = np.array([4, 128, 128])  # Should be loaded from the args
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
@@ -220,6 +223,7 @@ def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_
 
 
 def build_embedding_metadata(all_embeddings, project_data):
+    project_data.project_config.logger.info("Building embedding metadata")
     # Collect metadata
     df_tracks = project_data.get_final_tracks_only_finished_neurons()[0]
     X = []
