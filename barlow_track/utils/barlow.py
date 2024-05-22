@@ -201,11 +201,12 @@ class Transform:
 
 class NeuronImageWithGTDataset(Dataset):
     def __init__(self, dict_of_neurons_of_volumes, dict_of_ids_of_volumes, which_neurons):
-        # Same normalization as the Transform used to train
+        # In order to synchronize the normalization used
+        self._transform = Transform()
         @torch.no_grad
         def _normalize(x):
-            # Note: that was applied to crops, not full volumes
-            t = tio.RescaleIntensity(percentiles=(5, 100), copy=False)
+            # Note: applied to crops, not full volumes
+            t = self._transform.final_normalization
             return t(torch.as_tensor(x.astype(float), dtype=torch.float32))
 
         logging.info("Normalizing data, can take a while")
