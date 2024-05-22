@@ -3,65 +3,16 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from backports.cached_property import cached_property
-from matplotlib import pyplot as plt
+from barlow_track.utils.barlow_visualize import plot_clusters
 from tqdm.auto import tqdm
 from hdbscan import HDBSCAN
 import hdbscan
-import matplotlib.patheffects as PathEffects
-import matplotlib
 
 from wbfm.utils.external.utils_pandas import fill_missing_indices_with_nan
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching, \
     combine_dataframes_using_mode, combine_and_rename_multiple_dataframes
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.projects.utils_neuron_names import int2name_neuron
-
-
-def plot_clusters(db, Y, class_labels=True):
-    fig = plt.figure(figsize=(10, 10), dpi=300)
-
-    if Y.shape[1] > 2:
-        logging.warning("Data passed was not 2 dimensional (did you mean to run tsne?). For now, taking top 2")
-        Y = Y[:, :2]
-
-    if isinstance(db, np.ndarray):
-        labels = db
-    else:
-        labels = db.labels_
-    # core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    # core_samples_mask[db.core_sample_indices_] = True
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-    n_noise_ = list(labels).count(-1)
-
-    # Black removed and is used for noise instead.
-    unique_labels = set(labels)
-    # colors = [plt.cm.Set1(each) for each in np.linspace(0, 1, len(unique_labels))]
-    colors = matplotlib.colors.ListedColormap(np.random.rand(256, 3)).colors
-    for k, col in zip(unique_labels, colors):
-        if k == -1:
-            # Black used for noise.
-            col = [0, 0, 0, 1]
-
-        class_member_mask = labels == k
-        xy = Y[class_member_mask]
-        plt.plot(
-            xy[:, 0],
-            xy[:, 1],
-            "o",
-            markerfacecolor=tuple(col),
-            markeredgecolor="k",
-            markersize=14,
-        )
-
-        if class_labels:
-            text = plt.annotate(f'{k}', np.mean(xy, axis=0), fontsize=32, color='black')
-            text.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
-
-    plt.title("Estimated number of clusters: %d" % n_clusters_)
-    plt.tight_layout()
-    plt.show()
-
-    return fig
 
 
 @dataclass
@@ -272,7 +223,7 @@ class WormTsneTracker:
 
     def multicluster_single_window(self, start_volume=0, vol_ind=None, to_plot=False, verbose=0):
         """
-        Cluster one window n times, and then combine for consistency
+        Cluster one window self.n_clusters_per_window times, and then combine for consistency
 
         Parameters
         ----------
@@ -311,6 +262,8 @@ class WormTsneTracker:
     def track_using_overlapping_windows(self):
         """
         Clusters one window, then moves by self.tracker_stride, clusters again, and combines in sequence
+
+        See also track_using_global_clusterer
 
         Returns
         -------
@@ -356,6 +309,14 @@ class WormTsneTracker:
         return df_combined, all_dfs
 
     def track_using_global_clusterer(self):
+        """
+        Track using the global clusterer, which is built from the feature space of the entire dataset
+
+        See also track_using_overlapping_windows
+
+        Returns
+        -------
+        """
         if self.global_clusterer is None:
             self.build_global_clusterer()
 
@@ -399,7 +360,7 @@ class WormTsneTracker:
 
 def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
     """
-    Uses tsne + hdbscan clusters on SUPERGLUE neuron feature space as a tracker
+    Uses tsne + hdbscan clusters on neuron feature space as a tracker
 
     Parameters
     ----------

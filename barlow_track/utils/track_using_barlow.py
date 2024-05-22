@@ -6,11 +6,9 @@ from pathlib import Path
 import numpy as np
 import torch
 import zarr
-from matplotlib import pyplot as plt
+from barlow_track.utils.barlow_visualize import plot_relative_accuracy
 from sklearn.decomposition import TruncatedSVD
 from tqdm.auto import tqdm
-from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching
-from wbfm.utils.performance.comparing_ground_truth import calculate_accuracy_from_dataframes
 from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.general.utils_filenames import pickle_load_binary
@@ -21,6 +19,7 @@ from barlow_track.utils.track_using_clusters import WormTsneTracker
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
+                                   use_windowed_clustering=False,
                                    to_plot_relative_accuracy=True):
     """
     Tracks a project using a pretrained Barlow Twins model
@@ -32,12 +31,15 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     4. Run the clusterer and get the final tracks
     5. Calculate accuracy and save the results
 
+    Note that this uses the WormTsneTracker class to do the full windowed clustering and tracking
+
     Parameters
     ----------
     project_config
     model_fname - the exact name of the model file, or the full path to the model file
         Example: /scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search/trial_0/resnet50-1.pth
     results_subfolder
+    use_windowed_clustering - Whether to use the windowed clustering or the global clustering
     to_plot_relative_accuracy
 
     Returns
@@ -135,40 +137,18 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                   subfolder=results_subfolder)
 
     # Do the clustering
-    project_config.logger.info("Running: track_using_global_clusterer")
-    df_combined = tracker.track_using_global_clusterer()
+    if use_windowed_clustering:
+        project_config.logger.info("Running: track_using_windowed_clusterer")
+        df_combined = tracker.track_using_windowed_clusterer()
+    else:
+        project_config.logger.info("Running: track_using_global_clusterer")
+        df_combined = tracker.track_using_global_clusterer()
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
     project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)
 
     if to_plot_relative_accuracy:
         plot_relative_accuracy(df_combined, results_subfolder, project_data)
-
-
-def plot_relative_accuracy(df_combined, results_subfolder, project_data, to_save=True):
-    num_frames = df_combined.shape[0] - 1
-    df_base = project_data.get_final_tracks_only_finished_neurons()[0].loc[:num_frames, :]
-    df_cluster_renamed, matches, conf, name_mapping = rename_columns_using_matching(df_base, df_combined,
-                                                                                    try_to_fix_inf=True)
-    df_all_acc = calculate_accuracy_from_dataframes(df_base, df_cluster_renamed,
-                                                    column_names=['raw_neuron_ind_in_list'])
-    df_tracker = project_data.intermediate_global_tracks
-    df_all_acc_original = calculate_accuracy_from_dataframes(df_base, df_tracker,
-                                                             column_names=['raw_neuron_ind_in_list'])
-    plt.figure(figsize=(20, 5), dpi=300)
-    plt.xticks(rotation=90)
-    plt.ylabel("Fraction correct (exc. gt nan)")
-    plt.xlabel("Neuron name")
-    plt.plot(df_all_acc_original.index, df_all_acc_original['matches_to_gt_nonnan'], label='Old tracker')
-    plt.plot(df_all_acc.index, df_all_acc['matches_to_gt_nonnan'], label='Unsupervised tracker')
-    plt.title(f"Tracking accuracy (mean={np.mean(df_all_acc['matches_to_gt_nonnan'])}")
-    plt.legend()
-    plt.tight_layout()
-
-    if to_save:
-        fname = os.path.join(results_subfolder, f'accuracy.png')
-        fname = project_data.project_config.resolve_relative_path(fname)
-        plt.savefig(fname)
 
 
 def embed_using_barlow(gpu, model, project_data, target_sz):

@@ -1,6 +1,12 @@
+import logging
+import os
+
+import matplotlib
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, patheffects as PathEffects
 from matplotlib.colors import TwoSlopeNorm
+from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching
+from wbfm.utils.performance.comparing_ground_truth import calculate_accuracy_from_dataframes
 
 
 def visualize_model_performance(c, save_fname=None, vmin=None, vmax=None):
@@ -30,3 +36,76 @@ def visualize_model_performance(c, save_fname=None, vmin=None, vmax=None):
         plt.savefig(save_fname)
 
     return fig
+
+
+def plot_clusters(db, Y, class_labels=True):
+    fig = plt.figure(figsize=(10, 10), dpi=300)
+
+    if Y.shape[1] > 2:
+        logging.warning("Data passed was not 2 dimensional (did you mean to run tsne?). For now, taking top 2")
+        Y = Y[:, :2]
+
+    if isinstance(db, np.ndarray):
+        labels = db
+    else:
+        labels = db.labels_
+    # core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    # core_samples_mask[db.core_sample_indices_] = True
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    n_noise_ = list(labels).count(-1)
+
+    # Black removed and is used for noise instead.
+    unique_labels = set(labels)
+    # colors = [plt.cm.Set1(each) for each in np.linspace(0, 1, len(unique_labels))]
+    colors = matplotlib.colors.ListedColormap(np.random.rand(256, 3)).colors
+    for k, col in zip(unique_labels, colors):
+        if k == -1:
+            # Black used for noise.
+            col = [0, 0, 0, 1]
+
+        class_member_mask = labels == k
+        xy = Y[class_member_mask]
+        plt.plot(
+            xy[:, 0],
+            xy[:, 1],
+            "o",
+            markerfacecolor=tuple(col),
+            markeredgecolor="k",
+            markersize=14,
+        )
+
+        if class_labels:
+            text = plt.annotate(f'{k}', np.mean(xy, axis=0), fontsize=32, color='black')
+            text.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
+
+    plt.title("Estimated number of clusters: %d" % n_clusters_)
+    plt.tight_layout()
+    plt.show()
+
+    return fig
+
+
+def plot_relative_accuracy(df_combined, results_subfolder, project_data, to_save=True):
+    num_frames = df_combined.shape[0] - 1
+    df_base = project_data.get_final_tracks_only_finished_neurons()[0].loc[:num_frames, :]
+    df_cluster_renamed, matches, conf, name_mapping = rename_columns_using_matching(df_base, df_combined,
+                                                                                    try_to_fix_inf=True)
+    df_all_acc = calculate_accuracy_from_dataframes(df_base, df_cluster_renamed,
+                                                    column_names=['raw_neuron_ind_in_list'])
+    df_tracker = project_data.intermediate_global_tracks
+    df_all_acc_original = calculate_accuracy_from_dataframes(df_base, df_tracker,
+                                                             column_names=['raw_neuron_ind_in_list'])
+    plt.figure(figsize=(20, 5), dpi=300)
+    plt.xticks(rotation=90)
+    plt.ylabel("Fraction correct (exc. gt nan)")
+    plt.xlabel("Neuron name")
+    plt.plot(df_all_acc_original.index, df_all_acc_original['matches_to_gt_nonnan'], label='Old tracker')
+    plt.plot(df_all_acc.index, df_all_acc['matches_to_gt_nonnan'], label='Unsupervised tracker')
+    plt.title(f"Tracking accuracy (mean={np.mean(df_all_acc['matches_to_gt_nonnan'])}")
+    plt.legend()
+    plt.tight_layout()
+
+    if to_save:
+        fname = os.path.join(results_subfolder, f'accuracy.png')
+        fname = project_data.project_config.resolve_relative_path(fname)
+        plt.savefig(fname)
