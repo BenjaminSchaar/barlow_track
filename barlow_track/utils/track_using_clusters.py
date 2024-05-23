@@ -282,7 +282,7 @@ class WormTsneTracker:
         if self.verbose >= 1:
             print(f"Clustering {len(all_start_volumes)} windows of length {self.n_volumes_per_window}...")
         all_dfs = []
-        for start_volume in tqdm(all_start_volumes):
+        for start_volume in tqdm(all_start_volumes, leave=False):
             with pd.option_context('mode.chained_assignment', None):
                 # Fix incorrect warning
                 df_window, _ = self.multicluster_single_window(start_volume)
