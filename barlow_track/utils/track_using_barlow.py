@@ -19,7 +19,7 @@ from barlow_track.utils.track_using_clusters import WormTsneTracker
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
-                                   use_windowed_clustering=True,
+                                   track_using_overlapping_windows=True,
                                    to_plot_relative_accuracy=True):
     """
     Tracks a project using a pretrained Barlow Twins model
@@ -39,7 +39,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     model_fname - the exact name of the model file, or the full path to the model file
         Example: /scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search/trial_0/resnet50-1.pth
     results_subfolder
-    use_windowed_clustering - Whether to use the windowed clustering or the global clustering
+    track_using_overlapping_windows - Whether to use the windowed clustering or the global clustering
     to_plot_relative_accuracy
 
     Returns
@@ -138,9 +138,9 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                   subfolder=results_subfolder)
 
     # Do the clustering
-    if use_windowed_clustering:
-        project_config.logger.info("Running: track_using_windowed_clusterer")
-        df_combined = tracker.track_using_windowed_clusterer()
+    if track_using_overlapping_windows:
+        project_config.logger.info("Running: track_using_overlapping_windows")
+        df_combined = tracker.track_using_overlapping_windows()
     else:
         project_config.logger.info("Running: track_using_global_clusterer")
         df_combined = tracker.track_using_global_clusterer()
