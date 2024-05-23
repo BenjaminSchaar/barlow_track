@@ -149,7 +149,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)
 
     if to_plot_relative_accuracy:
-        plot_relative_accuracy(df_combined, results_subfolder, project_data)
+        plot_relative_accuracy(df_combined, project_data, results_subfolder)
 
 
 def embed_using_barlow(gpu, model, project_data, target_sz):

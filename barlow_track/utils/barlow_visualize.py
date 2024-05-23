@@ -85,7 +85,7 @@ def plot_clusters(db, Y, class_labels=True):
     return fig
 
 
-def plot_relative_accuracy(df_combined, results_subfolder, project_data, to_save=True):
+def plot_relative_accuracy(df_combined, project_data, results_subfolder=None, to_save=True):
     num_frames = df_combined.shape[0] - 1
     df_base = project_data.get_final_tracks_only_finished_neurons()[0].loc[:num_frames, :]
     df_cluster_renamed, matches, conf, name_mapping = rename_columns_using_matching(df_base, df_combined,
