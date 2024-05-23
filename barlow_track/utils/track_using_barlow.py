@@ -140,7 +140,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     # Do the clustering
     if track_using_overlapping_windows:
         project_config.logger.info("Running: track_using_overlapping_windows")
-        df_combined = tracker.track_using_overlapping_windows()
+        df_combined, all_dfs = tracker.track_using_overlapping_windows()
     else:
         project_config.logger.info("Running: track_using_global_clusterer")
         df_combined = tracker.track_using_global_clusterer()
