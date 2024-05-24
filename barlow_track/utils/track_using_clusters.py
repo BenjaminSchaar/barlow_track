@@ -294,7 +294,7 @@ class WormTsneTracker:
         all_dfs = [fill_missing_indices_with_nan(df, expected_max_t=self.num_frames)[0] for df in all_dfs]
         df_global = fill_missing_indices_with_nan(df_global, expected_max_t=self.num_frames)[0]
         all_dfs_renamed = [df_global]
-        for df in tqdm(all_dfs[1:]):
+        for df in tqdm(all_dfs[1:], leave=False):
             df_renamed, *_ = rename_columns_using_matching(df_global, df, try_to_fix_inf=True)
             all_dfs_renamed.append(df_renamed)
 

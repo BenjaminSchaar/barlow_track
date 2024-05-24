@@ -118,10 +118,12 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                 all_embeddings, project_data)
 
         svd_components = 50
-        project_config.logger.info(f"Truncating feature space using {svd_components} PCA components")
         X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
+        project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
+                                   f"(original matrix size: {X.shape})")
         alg = TruncatedSVD(n_components=svd_components)
         X_svd = alg.fit_transform(X)
+        project_config.logger.info(f"Finished truncation")
 
         # Save embeddings and trackers
         opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,

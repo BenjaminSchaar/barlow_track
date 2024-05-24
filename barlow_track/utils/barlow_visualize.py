@@ -100,7 +100,7 @@ def plot_relative_accuracy(df_combined, project_data, results_subfolder=None, to
     plt.ylabel("Fraction correct (exc. gt nan)")
     plt.xlabel("Neuron name")
     plt.plot(df_all_acc_original.index, df_all_acc_original['matches_to_gt_nonnan'], label='Old tracker')
-    plt.plot(df_all_acc.index, df_all_acc['matches_to_gt_nonnan'], label='Unsupervised tracker')
+    plt.plot(df_all_acc.index, df_all_acc['matches_to_gt_nonnan'], '-o', label='Unsupervised tracker')
     plt.title(f"Tracking accuracy (mean={np.mean(df_all_acc['matches_to_gt_nonnan'])}")
     plt.legend()
     plt.tight_layout()
