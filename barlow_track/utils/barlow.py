@@ -437,8 +437,8 @@ def load_barlow_model(model_fname):
     args_fname = Path(model_fname).with_name('args.pickle')
     args = pickle_load_binary(args_fname)
     logging.info(f"Loaded args from {args_fname}: {args}")
-    if 'target_sz' not in args:
-        raise ValueError(f"Could not find target_sz in args: {args}")
+    # if 'target_sz' not in args:
+    #     raise ValueError(f"Could not find target_sz in args: {args}")
     target_sz = args.target_sz
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
