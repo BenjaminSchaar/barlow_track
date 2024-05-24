@@ -66,6 +66,43 @@ def get_bbox_data_for_volume_only_labeled(project_data, t, target_sz=np.array([8
     return all_dat_dict, seg2name, which_neurons
 
 
+def get_bbox_data_for_volume_lazy(project_data, t, target_sz=np.array([8, 64, 64]), which_neurons=None):
+    """
+    Like get_bbox_data_for_volume, but returns a generator instead of a dictionary of arrays in memory
+    """
+
+    if which_neurons is None:
+        which_neurons = project_data.finished_neuron_names()
+    if which_neurons is None:
+        project_data.project_config.logger.warning("Found no explicitly tracked neurons, assuming all are correct")
+        which_neurons = project_data.neuron_names
+
+    # Get the tracked mask indices, with a mapping from their neuron name
+    name2seg = dict(project_data.final_tracks.loc[t, (slice(None), 'raw_segmentation_id')].droplevel(1))
+    seg2name = {}
+    for k, v in name2seg.items():
+        seg2name[cast_int_or_nan(v)] = k
+    tracked_segs = set(seg2name.keys())
+
+    # Get a bbox for all neurons in 3d, but skip the untracked mask indices
+    this_seg = project_data.raw_segmentation[t, ...]
+    props = regionprops(this_seg)
+
+    this_red = np.array(project_data.red_data[t, ...])
+    sz = project_data.red_data.shape
+
+    for p in props:
+        this_label = p.label
+        if this_label not in tracked_segs:
+            continue
+        bbox = p.bbox
+
+        this_name = seg2name[this_label]
+        dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)
+
+        yield this_name, dat
+
+
 def get_3d_crop_using_bbox(bbox, sz, target_sz, this_red):
     """
     A real bbox does not need to be passed. Alternative is just the centroid in this 6-value format:

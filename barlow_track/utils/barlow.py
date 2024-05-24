@@ -2,7 +2,7 @@
 import concurrent.futures
 import gc
 from pathlib import Path
-
+from dataclasses import dataclass
 import numpy as np
 import torch
 from torch import nn, optim
@@ -12,9 +12,10 @@ from pytorch_lightning.core.datamodule import LightningDataModule
 from tqdm.auto import tqdm
 from torch.utils.data.dataset import random_split
 from torch.utils.data import Dataset
-from typing import Optional
+from typing import Optional, Tuple, List
 from torch.utils.data.dataloader import DataLoader
 from wbfm.utils.general.utils_filenames import pickle_load_binary
+from wbfm.utils.projects.finished_project_data import ProjectData
 
 from barlow_track.utils.siamese import Siamese
 import math
@@ -204,7 +205,13 @@ class Transform:
         return self.final_normalization(img)
 
 
-class NeuronImageWithGTDataset(Dataset):
+class NeuronImageWithGTDatasetDense(Dataset):
+    """
+    Preloads all image data into memory, then returns it as needed. Useful for small datasets.
+
+    See also: NeuronImageWithGTDataset for lazy loading
+
+    """
     def __init__(self, dict_of_neurons_of_volumes, dict_of_ids_of_volumes, which_neurons):
         # In order to synchronize the normalization used
         self._transform = Transform()
@@ -220,8 +227,8 @@ class NeuronImageWithGTDataset(Dataset):
         self.which_neurons = which_neurons
 
     def __getitem__(self, idx):
-        if idx not in self.dict_of_ids_of_volumes:
-            raise IndexError   # Make basic looping work with pytorch
+        # if idx not in self.dict_of_ids_of_volumes:
+        #     raise IndexError   # Make basic looping work with pytorch
         x = torch.unsqueeze(self.dict_all_volume_crops[idx], 0)
         gt_id = self.dict_of_ids_of_volumes[idx]
         return x, gt_id
@@ -259,7 +266,50 @@ class NeuronImageWithGTDataset(Dataset):
                     future.result()
                     pbar.update(1)
 
-        return NeuronImageWithGTDataset(dict_of_neurons_of_volumes, dict_of_ids_of_volumes, which_neurons)
+        return NeuronImageWithGTDatasetDense(dict_of_neurons_of_volumes, dict_of_ids_of_volumes, which_neurons)
+
+
+class NeuronImageWithGTDataset(Dataset):
+    def __init__(self, project_data, num_frames, target_sz):
+        # In order to synchronize the normalization used
+        self._transform = Transform()
+        self.num_frames = num_frames
+        self.project_data = project_data
+        self.target_sz = target_sz
+
+    def _normalize(self, x):
+        # Note: applied to crops, not full volumes
+        t = self._transform.final_normalization_no_copy
+        return t(torch.as_tensor(x.astype(float), dtype=torch.float32))
+
+    def __getitem__(self, idx):
+        # Get data from the lazy loader
+        x, gt_id = self.get_neurons_single_volume(idx)
+
+        # Normalize, unsqueeze, and return
+        x = torch.unsqueeze(self._normalize(x), 0)
+
+        return x, gt_id
+
+    def __len__(self):
+        return self.num_frames
+
+    @staticmethod
+    def _fix_empty_volume(neurons_in_single_volume, target_sz):
+        keys = list(neurons_in_single_volume.keys())  # Need to enforce ordering?
+        if len(keys) > 0:
+            keys.sort()
+            ids = keys  # strings
+            cropped_neuron_data = np.stack([neurons_in_single_volume[k] for k in keys], 0)
+        else:
+            ids = []
+            cropped_neuron_data = np.zeros((0, *target_sz))
+        return cropped_neuron_data, ids
+
+    def get_neurons_single_volume(self, _t):
+        neurons_in_single_volume, _, _ = get_bbox_data_for_volume_only_labeled(self.project_data, _t,
+                                                                               target_sz=self.target_sz)
+        return self._fix_empty_volume(neurons_in_single_volume, self.target_sz)
 
 
 class NeuronAugmentedImagePairDataset(Dataset):
