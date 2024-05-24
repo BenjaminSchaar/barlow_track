@@ -176,7 +176,7 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
 
             with tqdm(total=len(ids), leave=False) as pbar:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-                    futures = {executor.submit(_parallel_func, name): name for name in enumerate(names) if name in ids}
+                    futures = {executor.submit(_parallel_func, n): n for n in names if n in ids}
                     for future in concurrent.futures.as_completed(futures):
                         future.result()
                         pbar.update(1)
