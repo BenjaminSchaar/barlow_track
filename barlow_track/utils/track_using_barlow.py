@@ -109,15 +109,14 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             folder_fname = '/home/charles/Current_work/repos/dlc_for_wbfm/wbfm/notebooks/nn_ideas/'
             fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
 
-        with torch.no_grad():
-            gpu, model, target_sz = load_barlow_model(fname)
-            model.eval()
+        gpu, model, target_sz = load_barlow_model(fname)
+        model.eval()
 
-            # Embed using the model
-            all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz)
+        # Embed using the model
+        all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz)
 
-            linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices = build_embedding_metadata(
-                all_embeddings, project_data)
+        linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices = build_embedding_metadata(
+            all_embeddings, project_data)
 
         svd_components = 50
         X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
@@ -163,23 +162,23 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
     names = dataset.which_neurons
     all_embeddings = defaultdict(dict)
     project_data.project_config.logger.info("Embedding using Barlow model")
-    # with torch.no_grad():
-    for t, (batch, ids) in tqdm(enumerate(dataset), total=len(dataset)):
-        # Move entire batch to gpu initially
-        batch = batch.to(gpu)
+    with torch.no_grad():
+        for t, (batch, ids) in tqdm(enumerate(dataset), total=len(dataset)):
+            # Move entire batch to gpu initially
+            batch = batch.to(gpu)
 
-        # Parallelize the actual embedding step using concurrent futures
-        def _parallel_func(name):
-            idx = ids.index(name)
-            crop = torch.unsqueeze(batch[:, idx, ...], 0)
-            all_embeddings[name][t] = model.embed(crop).cpu().numpy()
+            # Parallelize the actual embedding step using concurrent futures
+            def _parallel_func(name):
+                idx = ids.index(name)
+                crop = torch.unsqueeze(batch[:, idx, ...], 0)
+                all_embeddings[name][t] = model.embed(crop).cpu().numpy()
 
-        with tqdm(total=len(names), leave=False) as pbar:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-                futures = {executor.submit(_parallel_func, n): n for n in names if n in ids}
-                for future in concurrent.futures.as_completed(futures):
-                    future.result()
-                    pbar.update(1)
+            with tqdm(total=len(names), leave=False) as pbar:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+                    futures = {executor.submit(_parallel_func, n): n for n in names if n in ids}
+                    for future in concurrent.futures.as_completed(futures):
+                        future.result()
+                        pbar.update(1)
 
     return all_embeddings
 

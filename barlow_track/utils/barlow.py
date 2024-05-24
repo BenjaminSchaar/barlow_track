@@ -434,9 +434,9 @@ def get_crops_from_project(crop_kwargs, frames, project_data):
 def load_barlow_model(model_fname):
     from barlow_track.utils.siamese import ResidualEncoder3D
     state_dict = torch.load(model_fname)
-    # gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # Don't use gpu when tracking (bandwidth is the bottleneck?)
-    gpu = "cpu"
+    # gpu = "cpu"
     logging.info(f"Using device: {gpu}")
     # Possible problem: multiple models saved in the same folder with different settings
     args_fname = Path(model_fname).with_name('args.pickle')
