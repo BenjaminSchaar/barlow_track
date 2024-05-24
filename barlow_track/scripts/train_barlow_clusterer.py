@@ -11,7 +11,8 @@ import torch
 import wandb
 from ruamel.yaml import YAML
 
-from barlow_track.utils.barlow import NeuronCropImageDataModule, BarlowTwins3d, load_barlow_model
+from barlow_track.utils.barlow import BarlowTwins3d, load_barlow_model
+from barlow_track.utils.barlow_lightning import NeuronCropImageDataModule
 from barlow_track.utils.barlow_visualize import visualize_model_performance
 from barlow_track.utils.siamese import ResidualEncoder3D
 
