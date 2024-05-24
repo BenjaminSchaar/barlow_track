@@ -1,3 +1,4 @@
+import concurrent
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -172,7 +173,7 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
                 all_embeddings[name][t] = model.embed(crop).cpu().numpy()
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-                futures = {executor.submit(parallel_func, name): name for name in enumerate(names) if name in ids}
+                futures = {executor.submit(_parallel_func, name): name for name in enumerate(names) if name in ids}
                 for future in concurrent.futures.as_completed(futures):
                     future.result()
 
