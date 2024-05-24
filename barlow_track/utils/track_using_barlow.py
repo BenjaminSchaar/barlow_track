@@ -177,12 +177,6 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
                 for future in concurrent.futures.as_completed(futures):
                     future.result()
 
-            # for name in names:
-            #     if name in ids:
-            #         idx = ids.index(name)
-            #
-            #         crop = torch.unsqueeze(batch[:, idx, ...], 0).to(gpu)
-            #         all_embeddings[name][t] = model.embed(crop).cpu().numpy()
     return all_embeddings
 
 

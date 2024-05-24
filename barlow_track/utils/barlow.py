@@ -227,8 +227,8 @@ class NeuronImageWithGTDatasetDense(Dataset):
         self.which_neurons = which_neurons
 
     def __getitem__(self, idx):
-        # if idx not in self.dict_of_ids_of_volumes:
-        #     raise IndexError   # Make basic looping work with pytorch
+        if idx not in self.dict_of_ids_of_volumes:
+            raise IndexError   # Make basic looping work with pytorch
         x = torch.unsqueeze(self.dict_all_volume_crops[idx], 0)
         gt_id = self.dict_of_ids_of_volumes[idx]
         return x, gt_id
@@ -284,6 +284,8 @@ class NeuronImageWithGTDataset(Dataset):
         return t(torch.as_tensor(x.astype(float), dtype=torch.float32))
 
     def __getitem__(self, idx):
+        if idx > self.num_frames - 1:
+            raise IndexError   # Make basic looping work with pytorch
         # Get data from the lazy loader
         x, gt_id = self.get_neurons_single_volume(idx)
 

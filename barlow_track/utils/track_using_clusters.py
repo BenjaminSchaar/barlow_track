@@ -67,6 +67,10 @@ class WormTsneTracker:
 
     def cluster_obj2dataframe(self, db_svd, start_volume: int = None, vol_ind: list = None):
         """
+        Associate cluster label ids to a (time, local ind) tuple
+        i.e. build a dict
+        Note: the dict key should be a tuple of (neuron_name, 'raw_neuron_ind_in_list'),
+          because we want it to be a multilevel dataframe
 
         Parameters
         ----------
@@ -78,11 +82,6 @@ class WormTsneTracker:
         -------
 
         """
-        # Associate cluster label ids to a (time, local ind) tuple
-        # i.e. build a dict
-        # Note: the dict key should be a tuple of (neuron_name, 'raw_neuron_ind_in_list'),
-        #   because we want it to be a multilevel dataframe
-
         if isinstance(db_svd, (list, np.ndarray)):
             labels = db_svd
         else:
