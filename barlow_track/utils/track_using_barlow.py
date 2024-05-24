@@ -165,11 +165,13 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
     project_data.project_config.logger.info("Embedding using Barlow model")
     with torch.no_grad():
         for t, (batch, ids) in tqdm(enumerate(dataset), total=len(dataset)):
+            # Move entire batch to gpu initially
+            batch = batch.to(gpu)
 
             # Parallelize the actual embedding step using concurrent futures
             def _parallel_func(name):
                 idx = ids.index(name)
-                crop = torch.unsqueeze(batch[:, idx, ...], 0).to(gpu)
+                crop = torch.unsqueeze(batch[:, idx, ...], 0)
                 all_embeddings[name][t] = model.embed(crop).cpu().numpy()
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
