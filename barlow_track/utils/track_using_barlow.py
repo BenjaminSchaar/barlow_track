@@ -174,10 +174,12 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
                 crop = torch.unsqueeze(batch[:, idx, ...], 0)
                 all_embeddings[name][t] = model.embed(crop).cpu().numpy()
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-                futures = {executor.submit(_parallel_func, name): name for name in enumerate(names) if name in ids}
-                for future in concurrent.futures.as_completed(futures):
-                    future.result()
+            with tqdm(total=len(ids), leave=False) as pbar:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+                    futures = {executor.submit(_parallel_func, name): name for name in enumerate(names) if name in ids}
+                    for future in concurrent.futures.as_completed(futures):
+                        future.result()
+                        pbar.update(1)
 
     return all_embeddings
 
