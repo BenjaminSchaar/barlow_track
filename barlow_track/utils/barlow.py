@@ -276,6 +276,7 @@ class NeuronImageWithGTDataset(Dataset):
         self.num_frames = num_frames
         self.project_data = project_data
         self.target_sz = target_sz
+        self.which_names = project_data.get_list_of_finished_neurons()[1]
 
     def _normalize(self, x):
         # Note: applied to crops, not full volumes
