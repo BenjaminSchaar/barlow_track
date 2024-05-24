@@ -7,14 +7,11 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
-import sacred
 import torch
 import wandb
-from matplotlib import pyplot as plt
-from pytorch_lightning.loggers import WandbLogger
 from ruamel.yaml import YAML
 
-from barlow_track.utils.barlow import NeuronCropImageDataModule, BarlowTwins3d
+from barlow_track.utils.barlow import NeuronCropImageDataModule, BarlowTwins3d, load_barlow_model
 from barlow_track.utils.barlow_visualize import visualize_model_performance
 from barlow_track.utils.siamese import ResidualEncoder3D
 
@@ -44,8 +41,14 @@ def train_barlow_network(args):
         print("Initializing network using CPU...")
     else:
         print("Initializing network using GPU...")
-    backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
-    model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
+    # Initialize model, loading from checkpoint if passed
+    pretrained_model_path = args.pretrained_model_path
+    if pretrained_model_path is not None:
+        print(f"Loading model from {pretrained_model_path}")
+        gpu, model, target_sz = load_barlow_model(pretrained_model_path)
+    else:
+        backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
+        model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 

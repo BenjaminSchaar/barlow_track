@@ -1,4 +1,3 @@
-import logging
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -6,6 +5,8 @@ from pathlib import Path
 import numpy as np
 import torch
 import zarr
+
+from barlow_track.utils.barlow import load_barlow_model
 from barlow_track.utils.barlow_visualize import plot_relative_accuracy
 from sklearn.decomposition import TruncatedSVD
 from tqdm.auto import tqdm
@@ -170,21 +171,6 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
                     crop = torch.unsqueeze(batch[:, idx, ...], 0).to(gpu)
                     all_embeddings[name][t] = model.embed(crop).cpu().numpy()
     return all_embeddings
-
-
-def load_barlow_model(model_fname):
-    from barlow_track.utils.barlow import BarlowTwins3d
-    from barlow_track.utils.siamese import ResidualEncoder3D
-    state_dict = torch.load(model_fname)
-    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    logging.info(f"Using device: {gpu}")
-    args = pickle_load_binary(Path(model_fname).with_name('args.pickle'))
-    logging.info(f"Found args: {args}")
-    target_sz = np.array([4, 128, 128])  # Should be loaded from the args
-    backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
-    model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
-    model.load_state_dict(state_dict)
-    return gpu, model, target_sz
 
 
 def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, project_config, project_data,

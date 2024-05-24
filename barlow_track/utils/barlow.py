@@ -1,6 +1,8 @@
 # From: http://proceedings.mlr.press/v139/zbontar21a/zbontar21a.pdf
 import concurrent.futures
 import gc
+from pathlib import Path
+
 import numpy as np
 import torch
 from torch import nn, optim
@@ -12,6 +14,8 @@ from torch.utils.data.dataset import random_split
 from torch.utils.data import Dataset
 from typing import Optional
 from torch.utils.data.dataloader import DataLoader
+from wbfm.utils.general.utils_filenames import pickle_load_binary
+
 from barlow_track.utils.siamese import Siamese
 import math
 import logging
@@ -372,3 +376,21 @@ def get_crops_from_project(crop_kwargs, frames, project_data):
         vol_dat = np.stack(vol_dat, 0)
         list_of_neurons_of_volumes.append(vol_dat)
     return list_of_neurons_of_volumes
+
+
+def load_barlow_model(model_fname):
+    from barlow_track.utils.siamese import ResidualEncoder3D
+    state_dict = torch.load(model_fname)
+    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    logging.info(f"Using device: {gpu}")
+    # Possible problem: multiple models saved in the same folder with different settings
+    args_fname = Path(model_fname).with_name('args.pickle')
+    args = pickle_load_binary(args_fname)
+    logging.info(f"Loaded args from {args_fname}: {args}")
+    if 'target_sz' not in args:
+        raise ValueError(f"Could not find target_sz in args: {args}")
+    target_sz = args.target_sz
+    backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
+    model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
+    model.load_state_dict(state_dict)
+    return gpu, model, target_sz
