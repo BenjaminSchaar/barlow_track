@@ -54,9 +54,10 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     # Set up the Ax client
     ax_client = AxClient(enforce_sequential_optimization=DEBUG)
     # Read parameters from yaml file
+    parameters = list(hyperparameter_args['hyperparameters'])
     ax_client.create_experiment(
         name="my_experiment",
-        parameters=[hyperparameter_args['hyperparameters']],
+        parameters=parameters,
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
 
