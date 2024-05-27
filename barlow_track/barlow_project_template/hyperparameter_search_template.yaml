@@ -1,5 +1,3 @@
-# Template for hyperparameter search configuration file
-
 baseline_params_path: '/lisc/scratch/neurobiology/zimmer/wbfm/code/barlow_track/barlow_track/barlow_project_template/train_config.yaml'
 experiment_parent_folder: '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
 
@@ -19,18 +17,3 @@ hyperparameters:
     bounds: [256, 2048]
     log_scale: true
     value_type: int
-
-#  - name: epochs
-#    type: range
-#    bounds: [ 10, 100 ]
-#    value_type: int
-
-  # - name: lambd_obj
-  #   type: range
-  #   bounds: [0.0, 5.0]
-  #   # Optimizing this affects the loss function
-
-  # - name: train_both_correlations
-  #   type: choice
-  #   values: [true, false]
-  #   value_type: bool
