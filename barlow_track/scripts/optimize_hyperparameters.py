@@ -17,7 +17,10 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 def main(hyperparameter_path, run_locally=False, DEBUG=False):
     if DEBUG:
         run_locally = True
-    hyperparameter_args = YAML().load(open(hyperparameter_path))
+    if hyperparameter_path is None:
+        raise ValueError("Please provide a hyperparameter template path")
+    with open(hyperparameter_path, 'r') as f:
+        hyperparameter_args = YAML().load(f)
 
     # Full training script
 
@@ -26,7 +29,8 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     if fname is None:
         # Then assume there is a template in the same folder as the hyperparameter_path
         fname = os.path.join(os.path.dirname(hyperparameter_path), 'train_config.yaml')
-    baseline_params = YAML().load(open(fname))
+    with open(fname, 'r') as f:
+        baseline_params = YAML().load(f)
     if DEBUG:
         experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search_debug'
         baseline_params['wandb_name'] = 'barlow-hyperparameter-search-debug'
