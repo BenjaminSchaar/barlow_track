@@ -186,11 +186,11 @@ def _format_vectors_on_gpu(y1, y2, gpu):
 if __name__ == "__main__":
     # Get args, which is just path to yaml file
     parser = argparse.ArgumentParser(description='Train barlow network')
-    parser.add_argument('--project_path', '-p', default=None,
+    parser.add_argument('--network_args', '-p', default=None,
                         help='path to yaml file (config)')
 
     cli_args = parser.parse_args()
-    config_fname = cli_args.project_path
+    config_fname = cli_args.network_args
 
     # Load the yaml file
     with open(config_fname, 'r') as f:
