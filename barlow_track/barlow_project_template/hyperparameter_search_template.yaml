@@ -20,6 +20,11 @@ parameters:
     log_scale: true
     value_type: int
 
+#  - name: epochs
+#    type: range
+#    bounds: [ 10, 100 ]
+#    value_type: int
+
   # - name: lambd_obj
   #   type: range
   #   bounds: [0.0, 5.0]

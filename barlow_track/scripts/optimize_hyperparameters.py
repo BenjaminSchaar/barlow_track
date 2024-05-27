@@ -39,8 +39,6 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
             experiment_parent_folder = Path(hyperparameter_path).parent
         if run_locally:
             baseline_params['wandb_name'] = 'barlow-hyperparameter-search-local'
-        else:
-            baseline_params['wandb_name'] = 'barlow-hyperparameter-search'
 
 
     def evaluate(parameters):
@@ -70,15 +68,17 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         executor = AutoExecutor(folder=experiment_parent_folder, cluster='slurm')
     executor.update_parameters(timeout_min=60 * 12)
     if not run_locally:
-        executor.update_parameters(slurm_time="1-00:00:00")
+        # About 30 epochs per day
+        num_days = int(baseline_params['epochs'] / 30) + 1
+        executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
         executor.update_parameters(cpus_per_task=8)
         executor.update_parameters(slurm_partition="basic,gpu")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
 
 
-    total_budget = 10 if DEBUG else 100
-    num_parallel_jobs = 3 if DEBUG else 1
+    total_budget = 5 if DEBUG else 30
+    num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
 
     jobs = []
     submitted_jobs = 0
