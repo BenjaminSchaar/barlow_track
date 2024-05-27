@@ -3,6 +3,7 @@
 import argparse
 import os
 import time
+from pathlib import Path
 from types import SimpleNamespace
 from IPython.core.display_functions import display
 from ax.service.ax_client import AxClient, ObjectiveProperties
@@ -25,7 +26,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     # Full training script
 
     # Set up baseline parameters; load from template yaml file
-    fname = hyperparameter_args['hyperparameter_args']
+    fname = hyperparameter_args['baseline_params_path']
     if fname is None:
         # Then assume there is a template in the same folder as the hyperparameter_path
         fname = os.path.join(os.path.dirname(hyperparameter_path), 'train_config.yaml')
@@ -55,7 +56,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     # Read parameters from yaml file
     ax_client.create_experiment(
         name="my_experiment",
-        parameters=[hyperparameter_args['parameters']],
+        parameters=[hyperparameter_args['hyperparameters']],
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
 
