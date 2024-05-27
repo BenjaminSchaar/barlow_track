@@ -9,7 +9,8 @@ from IPython.core.display_functions import display
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.utils.notebook.plotting import render
 from ax.service.utils.report_utils import exp_to_df
-import yaml  # We are only using this for reading, so we don't want ruamel.yaml
+import yaml  # We are only using this for reading
+from ruamel.yaml import YAML
 from submitit import AutoExecutor, LocalJob, DebugJob
 
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
