@@ -14,14 +14,18 @@ from submitit import AutoExecutor, LocalJob, DebugJob
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
-def main(run_locally, DEBUG=False):
+def main(hyperparameter_path, run_locally=False, DEBUG=False):
     if DEBUG:
         run_locally = True
+    hyperparameter_args = YAML().load(open(hyperparameter_path))
 
     # Full training script
 
     # Set up baseline parameters; load from template yaml file
-    fname = '/lisc/scratch/neurobiology/zimmer/wbfm/code/barlow_track/barlow_track/barlow_project_template/train_config.yaml'
+    fname = hyperparameter_args['hyperparameter_args']
+    if fname is None:
+        # Then assume there is a template in the same folder as the hyperparameter_path
+        fname = os.path.join(os.path.dirname(hyperparameter_path), 'train_config.yaml')
     baseline_params = YAML().load(open(fname))
     if DEBUG:
         experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search_debug'
@@ -30,8 +34,9 @@ def main(run_locally, DEBUG=False):
         baseline_params['epochs'] = 2
         baseline_params['print_freq'] = 10
     else:
-        experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search'
-        baseline_params['epochs'] = 30
+        experiment_parent_folder = hyperparameter_args['experiment_parent_folder']
+        if experiment_parent_folder is None:
+            experiment_parent_folder = Path(hyperparameter_path).parent
         if run_locally:
             baseline_params['wandb_name'] = 'barlow-hyperparameter-search-local'
         else:
@@ -47,15 +52,10 @@ def main(run_locally, DEBUG=False):
 
     # Set up the Ax client
     ax_client = AxClient(enforce_sequential_optimization=DEBUG)
+    # Read parameters from yaml file
     ax_client.create_experiment(
         name="my_experiment",
-        parameters=[
-            {"name": "lr", "type": "range", "bounds": [1e-6, 1e-3], "log_scale": True},
-            {"name": "learning_rate_weights", "type": "range", "bounds": [0.1, 10.0], "log_scale": True},
-            {"name": "embedding_dim", "type": "range", "bounds": [256, 2048], "log_scale": True, "value_type": "int"},
-            # {"name": "lambd_obj", "type": "range", "bounds": [0.0, 5.0]},  # Optimizing this affects the loss function
-            # {"name": "train_both_correlations", "type": "choice", "values": [True, False], "value_type": "bool"},
-        ],
+        parameters=[hyperparameter_args['parameters']],
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
 
@@ -128,11 +128,13 @@ def main(run_locally, DEBUG=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--hyperparameter_template_path', '-p', default=None)
     parser.add_argument('--run_locally', action='store_true')
     parser.add_argument('--DEBUG', action='store_true')
 
     args = parser.parse_args()
+    hyperparameter_template_path = args.hyperparameter_template_path
     run_locally = args.run_locally
     DEBUG = args.DEBUG
 
-    main(run_locally, DEBUG)
+    main(hyperparameter_template_path, run_locally, DEBUG)
