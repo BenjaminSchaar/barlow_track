@@ -1,6 +1,7 @@
 # Use the Ax library to optimize hyperparameters
 # See: https://ax.dev/tutorials/submitit.html
 import argparse
+import logging
 import os
 import time
 from pathlib import Path
@@ -71,17 +72,18 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         # Can't use /tmp/submitit_runs because the cluster can't access it
         # https://github.com/facebookincubator/submitit/blob/main/docs/tips.md
         executor = AutoExecutor(folder=experiment_parent_folder, cluster='slurm')
-    executor.update_parameters(timeout_min=60 * 12)
+        logging.info(f"Running experiments in folder: {experiment_parent_folder}")
+
+    num_days = int(baseline_params['epochs'] / 30) + 1
+    executor.update_parameters(timeout_min=65 * 12 * num_days)
     if not run_locally:
         # About 30 epochs per day
-        num_days = int(baseline_params['epochs'] / 30) + 1
         executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
         executor.update_parameters(cpus_per_task=16)
         executor.update_parameters(mem="128G")
         executor.update_parameters(slurm_partition="basic,gpu")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
-
     total_budget = 5 if DEBUG else 30
     num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
 
@@ -98,12 +100,16 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
                 ax_client.complete_trial(trial_index=trial_index, raw_data=result)
                 jobs.remove((job, trial_index))
 
+                # Display the current trials.
+                display(exp_to_df(ax_client.experiment))
+
         # Schedule new jobs if there is availablity
         trial_index_to_param, _ = ax_client.get_next_trials(
             max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
         for trial_index, parameters in trial_index_to_param.items():
             # Make a new folder in the parent folder
             this_folder = os.path.join(experiment_parent_folder, f"trial_{trial_index}")
+            logging.info(f"Making parameter files for trial {trial_index} in folder {this_folder}")
             os.makedirs(this_folder, exist_ok=True)
             os.makedirs(os.path.join(this_folder, 'log'), exist_ok=True)
             os.makedirs(os.path.join(this_folder, 'checkpoints'), exist_ok=True)
@@ -117,12 +123,10 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
             jobs.append((job, trial_index))
             time.sleep(1)
 
-        # Display the current trials.
-        display(exp_to_df(ax_client.experiment))
-
         # Sleep for a bit before checking the jobs again to avoid overloading the cluster.
         # If you have a large number of jobs, consider adding a sleep statement in the job polling loop aswell.
-        time.sleep(60)
+        # Update every couple of minutes, because these jobs are very slow
+        time.sleep(5*60)
 
     best_parameters, (means, covariances) = ax_client.get_best_parameters()
     print(f'Best set of parameters: {best_parameters}')
