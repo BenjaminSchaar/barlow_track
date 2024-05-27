@@ -43,7 +43,10 @@ def train_barlow_network(args):
     else:
         print("Initializing network using GPU...")
     # Initialize model, loading from checkpoint if passed
-    pretrained_model_path = args.pretrained_model_path
+    try:
+        pretrained_model_path = args.pretrained_model_path
+    except AttributeError:
+        pretrained_model_path = None
     if pretrained_model_path is not None:
         print(f"Loading model from {pretrained_model_path}")
         gpu, model, target_sz = load_barlow_model(pretrained_model_path)
