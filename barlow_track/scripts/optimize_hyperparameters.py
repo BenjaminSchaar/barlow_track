@@ -9,7 +9,7 @@ from IPython.core.display_functions import display
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.utils.notebook.plotting import render
 from ax.service.utils.report_utils import exp_to_df
-from ruamel.yaml import YAML
+import yaml  # We are only using this for reading, so we don't want ruamel.yaml
 from submitit import AutoExecutor, LocalJob, DebugJob
 
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
@@ -21,7 +21,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     if hyperparameter_path is None:
         raise ValueError("Please provide a hyperparameter template path")
     with open(hyperparameter_path, 'r') as f:
-        hyperparameter_args = YAML().load(f)
+        hyperparameter_args = yaml.safe_load(f)
 
     # Full training script
 
@@ -31,7 +31,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         # Then assume there is a template in the same folder as the hyperparameter_path
         fname = os.path.join(os.path.dirname(hyperparameter_path), 'train_config.yaml')
     with open(fname, 'r') as f:
-        baseline_params = YAML().load(f)
+        baseline_params = yaml.safe_load(f)
     if DEBUG:
         experiment_parent_folder = '/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search_debug'
         baseline_params['wandb_name'] = 'barlow-hyperparameter-search-debug'
