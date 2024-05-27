@@ -1,6 +1,7 @@
 # Load a project and data, then train a Siamese network
 import argparse
 import json
+import logging
 import os
 import pickle
 import time
@@ -38,10 +39,7 @@ def train_barlow_network(args):
 
     torch.manual_seed(43)
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    if gpu == "cpu":
-        print("Initializing network using CPU...")
-    else:
-        print("Initializing network using GPU...")
+    logging.info(f"Using device: {gpu}")
     # Initialize model, loading from checkpoint if passed
     try:
         pretrained_model_path = args.pretrained_model_path

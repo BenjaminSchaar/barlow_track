@@ -335,18 +335,25 @@ def print_all_on_gpu():
 
 
 def load_barlow_model(model_fname):
+    """
+    Loads a model directly from the weights file, and assumes the args are saved in the same folder as args.pickle
+
+    """
     from barlow_track.utils.siamese import ResidualEncoder3D
     state_dict = torch.load(model_fname)
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # Don't use gpu when tracking (bandwidth is the bottleneck?)
     # gpu = "cpu"
     logging.info(f"Using device: {gpu}")
+    # Check if there are multiple .pickle files in the same folder, and give a warning if so
+    for fname in Path(model_fname).parent.glob('*.pickle'):
+        if fname.name != 'args.pickle':
+            logging.warning(f"Found extra pickle file in model folder: {fname}... "
+                            f"Make sure args.pickle is the correct file!")
     # Possible problem: multiple models saved in the same folder with different settings
     args_fname = Path(model_fname).with_name('args.pickle')
     args = pickle_load_binary(args_fname)
     logging.info(f"Loaded args from {args_fname}: {args}")
-    # if 'target_sz' not in args:
-    #     raise ValueError(f"Could not find target_sz in args: {args}")
     target_sz = np.array(args.target_sz)
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
