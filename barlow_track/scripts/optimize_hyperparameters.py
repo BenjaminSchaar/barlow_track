@@ -1,9 +1,9 @@
 # Use the Ax library to optimize hyperparameters
 # See: https://ax.dev/tutorials/submitit.html
+import argparse
 import os
 import time
 from types import SimpleNamespace
-
 from IPython.core.display_functions import display
 from ax.service.ax_client import AxClient, ObjectiveProperties
 from ax.utils.notebook.plotting import render
@@ -40,13 +40,11 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         if run_locally:
             baseline_params['wandb_name'] = 'barlow-hyperparameter-search-local'
 
-
     def evaluate(parameters):
         # Add the baseline parameters
         args = SimpleNamespace(**parameters)
         test_losses = train_barlow_network(args)
         return {"result": test_losses['test_loss']}
-
 
     # Set up the Ax client
     ax_client = AxClient(enforce_sequential_optimization=DEBUG)
@@ -75,7 +73,6 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         executor.update_parameters(slurm_partition="basic,gpu")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
-
 
     total_budget = 5 if DEBUG else 30
     num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
@@ -125,6 +122,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     # The covariance is only meaningful when multiple objectives are present.
 
     render(ax_client.get_contour_plot())
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
