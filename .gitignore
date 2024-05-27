@@ -165,3 +165,8 @@ cython_debug/
 barlow_track/scripts/wandb/
 *.json
 *.xml
+
+# Products of neural network training
+*/args.pickle
+*/checkpoint.pth
+*.ipynb
