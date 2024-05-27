@@ -76,7 +76,8 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         # About 30 epochs per day
         num_days = int(baseline_params['epochs'] / 30) + 1
         executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
-        executor.update_parameters(cpus_per_task=8)
+        executor.update_parameters(cpus_per_task=16)
+        executor.update_parameters(mem="128G")
         executor.update_parameters(slurm_partition="basic,gpu")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
