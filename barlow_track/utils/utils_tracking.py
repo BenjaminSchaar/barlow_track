@@ -48,6 +48,11 @@ class WormTsneTracker:
         if self.tracker_stride is None:
             self.tracker_stride = int(0.5 * self.n_volumes_per_window)
 
+        if self.n_volumes_per_window > self.num_frames:
+            logging.warning(f"n_volumes_per_window ({self.n_volumes_per_window}) is greater than num_frames "
+                            f"({self.num_frames}); setting to num_frames.")
+            self.n_volumes_per_window = self.num_frames
+
         if self.verbose >= 1:
             print("Successfully initialized!")
 
@@ -250,11 +255,14 @@ class WormTsneTracker:
             all_clusters.append(db_svd)
             all_ind.append(linear_ind)
 
-        # Choose a base dataframe and rename all to that one
-        # For now, combine as we go so that the matching gets the benefit of any overlaps (but is slower)
-        # Just choosing the one with the most neurons
-        i_base = np.argmax([df.shape[1] for df in all_raw_dfs])
-        df_combined = combine_and_rename_multiple_dataframes(all_raw_dfs, i_base=i_base)
+        if num_clusters > 1:
+            # Choose a base dataframe and rename all to that one
+            # For now, combine as we go so that the matching gets the benefit of any overlaps (but is slower)
+            # Just choosing the one with the most neurons
+            i_base = np.argmax([df.shape[1] for df in all_raw_dfs])
+            df_combined = combine_and_rename_multiple_dataframes(all_raw_dfs, i_base=i_base)
+        else:
+            df_combined = all_raw_dfs[0]
 
         return df_combined, (all_raw_dfs, all_clusters, all_tsnes, all_ind)
 
