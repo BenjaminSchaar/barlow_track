@@ -32,6 +32,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     if fname is None:
         # Then assume there is a template in the same folder as the hyperparameter_path
         fname = os.path.join(os.path.dirname(hyperparameter_path), 'train_config.yaml')
+    logging.info(f"Loading baseline parameters from {fname}")
     with open(fname, 'r') as f:
         baseline_params = yaml.safe_load(f)
     if DEBUG:

@@ -1,6 +1,6 @@
 # Template for hyperparameter search configuration file
 
-baseline_params_path: '/lisc/scratch/neurobiology/zimmer/wbfm/code/barlow_track/barlow_track/barlow_project_template/train_config.yaml'
+baseline_params_path: null
 
 hyperparameters:
   - name: lr
