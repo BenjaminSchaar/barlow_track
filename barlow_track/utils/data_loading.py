@@ -26,7 +26,8 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     return all_dat, all_bbox
 
 
-def get_bbox_data_for_volume_only_labeled(project_data, t, target_sz=np.array([8, 64, 64]), which_neurons=None):
+def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 64, 64]), which_neurons=None,
+                                        include_untracked=False):
     """
     Like get_bbox_data_for_volume, but only returns objects that have an ID in the final tracks
     Instead of returning a list of arrays, returns a dict indexed by the string name as found in project_data
@@ -54,11 +55,16 @@ def get_bbox_data_for_volume_only_labeled(project_data, t, target_sz=np.array([8
 
     for p in props:
         this_label = p.label
-        if this_label not in tracked_segs:
-            continue
+        if this_label in tracked_segs:
+            this_name = seg2name[this_label]
+        else:
+            if not include_untracked:
+                continue
+            else:
+                # Make a unique name for this untracked object
+                this_name = f"untracked_time_{t}_{this_label}"
         bbox = p.bbox
 
-        this_name = seg2name[this_label]
         dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)
 
         all_dat_dict[this_name] = dat

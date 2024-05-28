@@ -15,7 +15,7 @@ from barlow_track.utils.siamese import Siamese
 import math
 import logging
 
-from barlow_track.utils.data_loading import get_bbox_data_for_volume_only_labeled
+from barlow_track.utils.data_loading import get_bbox_data_for_volume_with_label
 
 
 def off_diagonal(x):
@@ -240,8 +240,8 @@ class NeuronImageWithGTDatasetDense(Dataset):
         dict_of_neurons_of_volumes, dict_of_ids_of_volumes = {}, {}
 
         def parallel_func(_t):
-            all_dat_dict, all_seg_dict, which_neurons = get_bbox_data_for_volume_only_labeled(project_data, _t,
-                                                                                              target_sz=target_sz)
+            all_dat_dict, all_seg_dict, which_neurons = get_bbox_data_for_volume_with_label(project_data, _t,
+                                                                                            target_sz=target_sz)
             keys = list(all_dat_dict.keys())  # Need to enforce ordering?
             if len(keys) > 0:
                 keys.sort()
@@ -264,13 +264,18 @@ class NeuronImageWithGTDatasetDense(Dataset):
 
 
 class NeuronImageWithGTDataset(Dataset):
-    def __init__(self, project_data, num_frames, target_sz):
+    """
+    Lazy loaded version of NeuronImageWithGTDatasetDense
+
+    """
+    def __init__(self, project_data, num_frames, target_sz, include_untracked=False):
         # In order to synchronize the normalization used
         self._transform = Transform()
         self.num_frames = num_frames
         self.project_data = project_data
         self.target_sz = target_sz
         self.which_neurons = project_data.get_list_of_finished_neurons()[1]
+        self.include_untracked = include_untracked
 
     def _normalize(self, x):
         # Note: applied to crops, not full volumes
@@ -304,8 +309,9 @@ class NeuronImageWithGTDataset(Dataset):
         return cropped_neuron_data, ids
 
     def get_neurons_single_volume(self, _t):
-        neurons_in_single_volume, _, _ = get_bbox_data_for_volume_only_labeled(self.project_data, _t,
-                                                                               target_sz=self.target_sz)
+        neurons_in_single_volume, _, _ = get_bbox_data_for_volume_with_label(self.project_data, _t,
+                                                                             target_sz=self.target_sz,
+                                                                             include_untracked=self.include_untracked)
         return self._fix_empty_volume(neurons_in_single_volume, self.target_sz)
 
 

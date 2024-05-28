@@ -165,7 +165,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 def embed_using_barlow(gpu, model, project_data, target_sz):
     from barlow_track.utils.barlow import NeuronImageWithGTDataset
     num_frames = project_data.num_frames - 1
-    dataset = NeuronImageWithGTDataset(project_data, num_frames, target_sz)
+    dataset = NeuronImageWithGTDataset(project_data, num_frames, target_sz, include_untracked=True)
     names = dataset.which_neurons
     all_embeddings = defaultdict(dict)
     project_data.project_config.logger.info("Embedding using Barlow model")
