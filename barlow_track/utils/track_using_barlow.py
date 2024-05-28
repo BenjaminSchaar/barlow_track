@@ -1,4 +1,5 @@
 import concurrent
+import logging
 import os
 from collections import defaultdict
 from pathlib import Path
@@ -166,7 +167,7 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
     from barlow_track.utils.barlow import NeuronImageWithGTDataset
     num_frames = project_data.num_frames - 1
     dataset = NeuronImageWithGTDataset(project_data, num_frames, target_sz, include_untracked=True)
-    names = dataset.which_neurons
+    # names = dataset.which_neurons
     all_embeddings = defaultdict(dict)
     project_data.project_config.logger.info("Embedding using Barlow model")
 
@@ -184,9 +185,11 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
             # no_grad is thread-local
             # https://github.com/pytorch/pytorch/issues/20528
             # with torch.no_grad():
-            futures = {executor.submit(_parallel_func, n): n for n in names if n in ids}
+            futures = {executor.submit(_parallel_func, n): n for n in ids}
             for future in concurrent.futures.as_completed(futures):
                 future.result()
+
+    logging.info(f"Finished embedding {len(all_embeddings)} neurons")
 
     return all_embeddings
 
