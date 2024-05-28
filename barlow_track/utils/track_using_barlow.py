@@ -116,11 +116,12 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         # Embed using the model
         all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz)
 
-        linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices = build_embedding_metadata(
+        linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
 
         svd_components = 50
-        X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
+        X = np.vstack(X)
+        # X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
         project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
                                    f"(original matrix size: {X.shape})")
         # Use dask to do the SVD, because it may be very very tall
@@ -226,12 +227,22 @@ def build_embedding_metadata(all_embeddings, project_data):
         t_list = list(vols_all_times.keys())
         vols_array = np.vstack(list(vols_all_times.values()))
 
-        df_this_neuron = df_tracks[name, 'raw_neuron_ind_in_list']
+        try:
+            df_this_neuron = df_tracks[name, 'raw_neuron_ind_in_list']
+            gt_ind = name2int_neuron_and_tracklet(name)
+            has_gt = True
+        except KeyError:
+            gt_ind = -1
+            has_gt = False
 
         for t_global in t_list:
             time_index_to_linear_feature_indices[t_global].append(i_linear_ind)
-            linear_ind_to_gt_ind[i_linear_ind] = name2int_neuron_and_tracklet(name)
-            linear_ind_to_raw_neuron_ind[i_linear_ind] = int(df_this_neuron[t_global])
+            linear_ind_to_gt_ind[i_linear_ind] = gt_ind
+            if has_gt:
+                linear_ind_to_raw_neuron_ind[i_linear_ind] = int(df_this_neuron[t_global])
+            else:
+                # Based on an expected name like: untracked_time_0_1234, i.e. f"untracked_time_{t}_{this_label}"
+                linear_ind_to_raw_neuron_ind[i_linear_ind] = int(name.split('_')[-1])
             i_linear_ind += 1
         X.append(vols_array)
-    return linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices
+    return linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices, X
