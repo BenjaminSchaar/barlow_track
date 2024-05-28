@@ -110,9 +110,9 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
             # Make a new folder in the parent folder
             this_folder = os.path.join(experiment_parent_folder, f"trial_{trial_index}")
             logging.info(f"Making parameter files for trial {trial_index} in folder {this_folder}")
-            os.makedirs(this_folder, exist_ok=True)
-            os.makedirs(os.path.join(this_folder, 'log'), exist_ok=True)
-            os.makedirs(os.path.join(this_folder, 'checkpoints'), exist_ok=True)
+            os.makedirs(this_folder, exist_ok=False)
+            os.makedirs(os.path.join(this_folder, 'log'), exist_ok=False)
+            os.makedirs(os.path.join(this_folder, 'checkpoints'), exist_ok=False)
             parameters['project_dir'] = this_folder
             # Add the baseline parameters, and save in this folder
             parameters = {**baseline_params, **parameters}
