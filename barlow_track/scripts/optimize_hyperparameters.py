@@ -79,7 +79,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
     if not run_locally:
         executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
         executor.update_parameters(cpus_per_task=16)
-        executor.update_parameters(mem="128G")
+        executor.update_parameters(slurm_mem="128G")
         executor.update_parameters(slurm_partition="basic,gpu")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
