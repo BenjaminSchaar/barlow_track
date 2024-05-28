@@ -64,6 +64,7 @@ def train_barlow_network(args):
         return
 
     wandb_opt = dict(mode="disabled") if args.DEBUG else {}
+    json_stats = []
 
     with wandb.init(project=args.wandb_name, entity="charlesfieseler", **wandb_opt) as run:
         # These lines are only useful for lightning projects
@@ -132,8 +133,7 @@ def train_barlow_network(args):
                     # Printing
                     stats = dict(epoch=epoch, val_loss=val_loss, time=int(time.time() - start_time))
                     print(json.dumps(stats))
-                    with open(stats_file, 'w') as f:
-                        print(json.dumps(stats), file=f)
+                    json_stats.append(stats)
 
             # Calculate the final test loss
             test_loss, test_loss_original, test_loss_transpose = 0, 0, 0
@@ -148,8 +148,7 @@ def train_barlow_network(args):
             # Printing
             stats = dict(epoch=epoch, test_loss=test_loss, time=int(time.time() - start_time))
             print(json.dumps(stats))
-            with open(stats_file, 'w') as f:
-                print(json.dumps(stats), file=f)
+            json_stats.append(stats)
 
         except KeyboardInterrupt:
             print("Interrupted training, saving model")
@@ -158,6 +157,9 @@ def train_barlow_network(args):
             print(e)
 
     # Final saving
+    with open(stats_file, 'w') as f:
+        print(json.dumps(json_stats), file=f)
+
     if args.rank == 0:
         # save final model (not in checkpoint dir)
         fname = get_sequential_filename(args.project_dir + '/resnet50.pth')
