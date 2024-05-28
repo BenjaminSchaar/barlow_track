@@ -2,7 +2,7 @@ import concurrent
 import os
 from collections import defaultdict
 from pathlib import Path
-
+import dask.array as da
 import numpy as np
 import torch
 import zarr
@@ -122,8 +122,15 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
         project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
                                    f"(original matrix size: {X.shape})")
-        alg = TruncatedSVD(n_components=svd_components)
-        X_svd = alg.fit_transform(X)
+        # Use dask to do the SVD, because it may be very very tall
+        if X.shape[0] > 10000:
+            chunks = (10000, X.shape[1])
+            X_dask = da.from_array(X, chunks=chunks)
+            u, s, v = da.linalg.svd(X_dask)
+            X_svd = np.array(u[:, :svd_components].compute())
+        else:
+            alg = TruncatedSVD(n_components=svd_components)
+            X_svd = alg.fit_transform(X)
         project_config.logger.info(f"Finished truncation")
 
         # Save embeddings and trackers
@@ -134,7 +141,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                    n_volumes_per_window=120,
                    linear_ind_to_raw_neuron_ind=linear_ind_to_raw_neuron_ind)
         tracker = WormTsneTracker(X_svd, **opt)
-        tracker_no_svd = WormTsneTracker(X, **opt)
+        tracker_no_svd = WormTsneTracker(X, **opt)  # This is only for debugging later
 
         save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
