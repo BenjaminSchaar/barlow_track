@@ -71,6 +71,9 @@ def train_barlow_network(args):
         # wandb_logger = WandbLogger()
         # wandb_logger.watch(model, log='all', log_freq=10)
 
+        # Initial json entry: the wandb run name and id
+        json_stats.append(dict(run_name=run.name, run_id=run.id))
+
         try:
             for epoch in range(0, args.epochs):
                 for step, (y1, y2) in enumerate(loader, start=epoch * len(loader)):
