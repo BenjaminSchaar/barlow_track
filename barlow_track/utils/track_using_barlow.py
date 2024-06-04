@@ -110,7 +110,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             folder_fname = '/home/charles/Current_work/repos/dlc_for_wbfm/wbfm/notebooks/nn_ideas/'
             fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
 
-        gpu, model, target_sz = load_barlow_model(fname)
+        gpu, model, args = load_barlow_model(fname)
+        target_sz = args.target_sz
         model.eval()
 
         # Embed using the model

@@ -364,4 +364,4 @@ def load_barlow_model(model_fname):
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
     model.load_state_dict(state_dict)
-    return gpu, model, target_sz
+    return gpu, model, args

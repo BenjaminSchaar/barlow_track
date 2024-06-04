@@ -46,8 +46,11 @@ def train_barlow_network(args):
     except AttributeError:
         pretrained_model_path = None
     if pretrained_model_path is not None:
-        print(f"Loading model from {pretrained_model_path}")
-        gpu, model, target_sz = load_barlow_model(pretrained_model_path)
+        logging.info(f"Loading model from {pretrained_model_path}")
+        gpu, model, new_args = load_barlow_model(pretrained_model_path)
+        logging.info(f"Loaded new args: {new_args}")
+        # Replace network-related values of args
+        args.embedding_dim = new_args.embedding_dim
     else:
         backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
         model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
