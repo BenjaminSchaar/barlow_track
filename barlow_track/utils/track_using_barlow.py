@@ -155,7 +155,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         df_combined, all_dfs = tracker.track_using_overlapping_windows()
     else:
         project_config.logger.info("Running: track_using_global_clusterer")
-        df_combined = tracker.track_using_global_clusterer()
+        df_combined = tracker.track_using_streaming_clusterer()
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
     project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)

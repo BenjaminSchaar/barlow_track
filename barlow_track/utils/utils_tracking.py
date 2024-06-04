@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
@@ -32,7 +33,7 @@ class WormTsneTracker:
 
     # Saving info after the tracking is done
     df_global: pd.DataFrame = None
-    global_clusterer: callable = None
+    streaming_clusterer: callable = None
     df_final: pd.DataFrame = None
 
     verbose: int = 1
@@ -70,7 +71,8 @@ class WormTsneTracker:
         all_start_volumes.append(self.num_frames - self.n_volumes_per_window - 1)
         return all_start_volumes
 
-    def cluster_obj2dataframe(self, db_svd, start_volume: int = None, vol_ind: list = None):
+    def cluster_obj2dataframe(self, db_svd, start_volume: int = None, vol_ind: list = None,
+                              n_vols=None, labels_are_in_feature_order=False):
         """
         Associate cluster label ids to a (time, local ind) tuple
         i.e. build a dict
@@ -82,6 +84,7 @@ class WormTsneTracker:
         db_svd - list or cluster object
         start_volume - optional; start of window
         vol_ind - optional; explicit indices
+        n_vols - optional; number of volumes in window. Default is self.n_volumes_per_window
 
         Returns
         -------
@@ -93,7 +96,8 @@ class WormTsneTracker:
             labels = db_svd.labels_
 
         time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
-        n_vols = self.n_volumes_per_window
+        if n_vols is None:
+            n_vols = self.n_volumes_per_window
 
         cluster_dict = {}
         # Assume the labels are in sequential order
@@ -121,64 +125,86 @@ class WormTsneTracker:
         current_global_ind = list(time_index_to_linear_feature_indices[current_time].copy())
         current_local_ind = 0
 
-        if self.linear_ind_to_raw_neuron_ind is not None:
-            all_linear_ind = self.get_linear_indices_from_time(start_volume, time_index_to_linear_feature_indices,
-                                                               vol_ind)
+        if labels_are_in_feature_order:
+            # i.e. labels are in the same order as the features, so we can just iterate through them
             for i, label in enumerate(labels):
-                # Determine neuron name based on class
                 if label == -1:
                     continue
                 else:
                     this_neuron_name = int2name_neuron(label + 1)
                     key = (this_neuron_name, 'raw_neuron_ind_in_list')
-
-                # Initialize dataframe dict
-                if key not in cluster_dict:
-                    cluster_dict[key] = get_empty_col()
-
-                # Get the linear data index of this labeled point
-                linear_index = all_linear_ind[i]
-
-                # Convert that to a time and a local segmentation
-                time_in_video = self.dict_linear_index_to_time[linear_index]
-                raw_neuron_ind_in_list = self.linear_ind_to_raw_neuron_ind[linear_index]
-
-                # Save in the dataframe dict
-                cluster_dict[key][time_in_video] = raw_neuron_ind_in_list
-
-        else:
-            logging.warning("Assumes the data is in time order")
-            for i, label in enumerate(labels):
-                global_ind = current_global_ind.pop(0)
-
-                if label == -1:
-                    # Still want to pop above
-                    pass
-                else:
-                    this_neuron_name = int2name_neuron(label + 1)
-                    key = (this_neuron_name, 'raw_neuron_ind_in_list')
+                    t = self.dict_linear_index_to_time[i]
+                    raw_neuron_ind = self.linear_ind_to_raw_neuron_ind[i]
 
                     if key not in cluster_dict:
                         cluster_dict[key] = get_empty_col()
 
-                    if np.isnan(cluster_dict[key][current_time]):
+                    if np.isnan(cluster_dict[key][t]):
                         # This is a numpy array
-                        cluster_dict[key][current_time] = current_local_ind
+                        cluster_dict[key][t] = raw_neuron_ind
                     else:
-                        # TODO: For now, just ignore the second assignment
                         pass
-                        # print(f"Multiple assignments found for {this_neuron_name} at t={current_time}")
+        else:
+            # Me from the future... I really don't know why I need all this!
+            # I think it only makes sense if I'm doing a specific window of time points
+            if self.linear_ind_to_raw_neuron_ind is not None:
+                all_linear_ind = self.get_linear_indices_from_time(start_volume, time_index_to_linear_feature_indices,
+                                                                   vol_ind, n_vols=n_vols)
+                for i, label in enumerate(labels):
+                    # Determine neuron name based on class
+                    if label == -1:
+                        continue
+                    else:
+                        this_neuron_name = int2name_neuron(label + 1)
+                        key = (this_neuron_name, 'raw_neuron_ind_in_list')
 
-                if len(current_global_ind) == 0:
-                    try:
-                        i_current_time, current_time = get_next_time(i_current_time, current_time)
-                    except IndexError:
-                        break
-                    # current_time += 1
-                    current_global_ind = list(time_index_to_linear_feature_indices[current_time].copy())
-                    current_local_ind = 0
-                else:
-                    current_local_ind += 1
+                    # Initialize dataframe dict
+                    if key not in cluster_dict:
+                        cluster_dict[key] = get_empty_col()
+
+                    # Get the linear data index of this labeled point
+                    linear_index = all_linear_ind[i]
+
+                    # Convert that to a time and a local segmentation
+                    time_in_video = self.dict_linear_index_to_time[linear_index]
+                    raw_neuron_ind_in_list = self.linear_ind_to_raw_neuron_ind[linear_index]
+
+                    # Save in the dataframe dict
+                    cluster_dict[key][time_in_video] = raw_neuron_ind_in_list
+
+            else:
+                logging.warning("Assumes the data is in time order")
+                for i, label in enumerate(labels):
+                    global_ind = current_global_ind.pop(0)
+
+                    if label == -1:
+                        # Still want to pop above
+                        pass
+                    else:
+                        this_neuron_name = int2name_neuron(label + 1)
+                        key = (this_neuron_name, 'raw_neuron_ind_in_list')
+
+                        if key not in cluster_dict:
+                            cluster_dict[key] = get_empty_col()
+
+                        if np.isnan(cluster_dict[key][current_time]):
+                            # This is a numpy array
+                            cluster_dict[key][current_time] = current_local_ind
+                        else:
+                            # TODO: For now, just ignore the second assignment
+                            pass
+                            # print(f"Multiple assignments found for {this_neuron_name} at t={current_time}")
+
+                    if len(current_global_ind) == 0:
+                        try:
+                            i_current_time, current_time = get_next_time(i_current_time, current_time)
+                        except IndexError:
+                            break
+                        # current_time += 1
+                        current_global_ind = list(time_index_to_linear_feature_indices[current_time].copy())
+                        current_local_ind = 0
+                    else:
+                        current_local_ind += 1
         df_cluster = pd.DataFrame(cluster_dict)
         return df_cluster
 
@@ -217,9 +243,11 @@ class WormTsneTracker:
 
         return db_svd, Y_tsne_svd, linear_ind
 
-    def get_linear_indices_from_time(self, start_volume, time_index_to_linear_feature_indices, vol_ind):
+    def get_linear_indices_from_time(self, start_volume, time_index_to_linear_feature_indices, vol_ind,
+                                     n_vols=None):
         if vol_ind is None:
-            n_vols = self.n_volumes_per_window
+            if n_vols is None:
+                n_vols = self.n_volumes_per_window
             vol_ind = np.arange(start_volume, start_volume + n_vols)
         linear_ind = np.hstack([time_index_to_linear_feature_indices[i] for i in vol_ind])
         linear_ind = np.array(linear_ind, dtype=int)
@@ -282,7 +310,7 @@ class WormTsneTracker:
         # Track a disjoint set of points for stitching, i.e. "global" tracking
         # Increase settings for this, because it should be very stable
         self.n_clusters_per_window *= 3
-        df_global = self.build_global_clusterer()
+        df_global = self.build_streaming_clusterer()
         self.n_clusters_per_window = int(self.n_clusters_per_window / 3)
 
         # Track each window
@@ -315,17 +343,20 @@ class WormTsneTracker:
 
         return df_combined, all_dfs
 
-    def track_using_global_clusterer(self):
+    def track_using_streaming_clusterer(self):
         """
-        Track using the global clusterer, which is built from the feature space of the entire dataset
+        Track using the streaming clusterer, which is built from the feature space of the entire dataset
+
+        The difference between this and track_using_global_clusterer is that this one uses a subset of the data and then
+        hdbscan.approximate_predict to get the final clusters
 
         See also track_using_overlapping_windows
 
         Returns
         -------
         """
-        if self.global_clusterer is None:
-            self.build_global_clusterer()
+        if self.streaming_clusterer is None:
+            self.build_streaming_clusterer()
 
         # Get indices to loop through, both time and linear data matrix
         vol_ind, linear_ind = [], []
@@ -337,7 +368,7 @@ class WormTsneTracker:
 
         # Cluster using pre-trained clusters
         X = self.X_svd[linear_ind, :]
-        test_labels, strengths = hdbscan.approximate_predict(self.global_clusterer, X)
+        test_labels, strengths = hdbscan.approximate_predict(self.streaming_clusterer, X)
         df_cluster = self.cluster_obj2dataframe(test_labels, vol_ind=vol_ind)
 
         # Combine without renaming
@@ -346,7 +377,40 @@ class WormTsneTracker:
         self.df_final = df_combined
         return df_combined
 
-    def build_global_clusterer(self):
+    def track_using_global_clusterer(self, umap_projection=True, umap_opt=None):
+        """
+        Track using a single clustering pass over the entire dataset
+
+        See also track_using_overlapping_windows
+
+        Returns
+        -------
+        """
+        if umap_opt is None:
+            umap_opt = dict(n_components=2, n_neighbors=30, min_dist=0.1)
+
+        # Do umap projection
+        if umap_projection:
+            from umap import UMAP
+            umap = UMAP(**umap_opt)
+            X_umap = umap.fit_transform(self.X_svd)
+        else:
+            X_umap = self.X_svd
+
+        # Cluster
+        db_opt = self.opt_db.copy()
+        # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
+        db_opt['min_cluster_size'] = int(0.3 * self.num_frames)
+        db_opt['max_cluster_size'] = int(1.1 * self.num_frames)
+        db_svd = HDBSCAN(**db_opt).fit(X_umap)
+
+        # Convert to dataframe
+        df_cluster = self.cluster_obj2dataframe(db_svd, start_volume=0, n_vols=self.num_frames,
+                                                labels_are_in_feature_order=True)
+
+        return df_cluster
+
+    def build_streaming_clusterer(self):
         if self.verbose >= 1:
             print(f"Initial non-local clustering...")
         # Only do one clustering, because that's all we will save
@@ -360,7 +424,7 @@ class WormTsneTracker:
         self.n_clusters_per_window = n_clusters_per_window
 
         self.df_global = df_global
-        self.global_clusterer = all_clusters[0]
+        self.streaming_clusterer = all_clusters[0]
 
         return df_global
 

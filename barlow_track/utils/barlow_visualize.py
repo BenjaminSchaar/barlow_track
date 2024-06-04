@@ -38,7 +38,7 @@ def visualize_model_performance(c, save_fname=None, vmin=None, vmax=None):
     return fig
 
 
-def plot_clusters(db, Y, class_labels=True):
+def plot_clusters(db, Y, class_labels=True, class_label_for_noise=False):
     fig = plt.figure(figsize=(10, 10), dpi=300)
 
     if Y.shape[1] > 2:
@@ -75,6 +75,8 @@ def plot_clusters(db, Y, class_labels=True):
         )
 
         if class_labels:
+            if k == -1 and not class_label_for_noise:
+                continue
             text = plt.annotate(f'{k}', np.mean(xy, axis=0), fontsize=32, color='black')
             text.set_path_effects([PathEffects.withStroke(linewidth=5, foreground='w')])
 
