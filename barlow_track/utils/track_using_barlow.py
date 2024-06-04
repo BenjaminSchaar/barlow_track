@@ -22,7 +22,7 @@ from barlow_track.utils.utils_tracking import WormTsneTracker
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
-                                   track_using_overlapping_windows=True,
+                                   track_using_overlapping_windows=False,
                                    to_plot_relative_accuracy=True):
     """
     Tracks a project using a pretrained Barlow Twins model
