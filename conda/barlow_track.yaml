@@ -23,6 +23,7 @@ dependencies:
   - scikit-learn
   - zarr
   - pandas
+  - umap-learn
   - pip:
       - sacred
       - ruamel.yaml
