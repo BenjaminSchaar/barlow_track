@@ -63,7 +63,7 @@ class WormTsneTracker:
 
     @property
     def num_frames(self):
-        return len(self.time_index_to_linear_feature_indices)
+        return max(self.time_index_to_linear_feature_indices.keys()) + 1
 
     @property
     def all_start_volumes(self):
@@ -90,6 +90,7 @@ class WormTsneTracker:
         -------
 
         """
+        logging.info("Converting cluster object to dataframe...")
         if isinstance(db_svd, (list, np.ndarray)):
             labels = db_svd
         else:
@@ -391,6 +392,7 @@ class WormTsneTracker:
 
         # Do umap projection
         if umap_projection:
+            logging.info("Doing UMAP projection...")
             from umap import UMAP
             umap = UMAP(**umap_opt)
             X_umap = umap.fit_transform(self.X_svd)
@@ -402,6 +404,7 @@ class WormTsneTracker:
         # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
         db_opt['min_cluster_size'] = int(0.3 * self.num_frames)
         db_opt['max_cluster_size'] = int(1.1 * self.num_frames)
+        logging.info("Clustering...")
         db_svd = HDBSCAN(**db_opt).fit(X_umap)
 
         # Convert to dataframe
