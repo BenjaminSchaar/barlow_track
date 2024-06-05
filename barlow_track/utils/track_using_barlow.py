@@ -245,7 +245,8 @@ def build_embedding_metadata(all_embeddings, project_data):
             if has_gt:
                 linear_ind_to_raw_neuron_ind[i_linear_ind] = int(df_this_neuron[t_global])
             else:
-                # Based on an expected name like: untracked_time_0_1234, i.e. f"untracked_time_{t}_{this_label}"
+                # Based on an expected name like: untracked_time_0_1234, where the last number is the raw_neuron_ind
+                # i.e. using segmentation_metadata.mask_index_to_i_in_array for that object
                 linear_ind_to_raw_neuron_ind[i_linear_ind] = int(name.split('_')[-1])
             i_linear_ind += 1
         X.append(vols_array)

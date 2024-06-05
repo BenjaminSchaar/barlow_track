@@ -54,15 +54,16 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     sz = project_data.red_data.shape
 
     for p in props:
-        this_label = p.label
-        if this_label in tracked_segs:
-            this_name = seg2name[this_label]
+        this_seg_label = p.label
+        if this_seg_label in tracked_segs:
+            this_name = seg2name[this_seg_label]
         else:
             if not include_untracked:
                 continue
             else:
-                # Make a unique name for this untracked object
-                this_name = f"untracked_time_{t}_{this_label}"
+                # Make a unique name for this untracked object, but keep the correct label
+                ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
+                this_name = f"untracked_time_{t}_{ind_in_list}"
         bbox = p.bbox
 
         dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)
