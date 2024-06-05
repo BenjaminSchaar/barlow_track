@@ -36,6 +36,9 @@ class WormTsneTracker:
     streaming_clusterer: callable = None
     df_final: pd.DataFrame = None
 
+    # For visualization
+    X_umap: np.array = None
+
     verbose: int = 1
 
     def __post_init__(self):
@@ -367,7 +370,7 @@ class WormTsneTracker:
                 linear_ind.extend(self.time_index_to_linear_feature_indices[i])
         linear_ind = np.array(linear_ind, dtype=int)
 
-        # Cluster using pre-trained clusters
+        logging.info("Clustering using pre-trained clusters...")
         X = self.X_svd[linear_ind, :]
         test_labels, strengths = hdbscan.approximate_predict(self.streaming_clusterer, X)
         df_cluster = self.cluster_obj2dataframe(test_labels, vol_ind=vol_ind)
@@ -396,6 +399,7 @@ class WormTsneTracker:
             from umap import UMAP
             umap = UMAP(**umap_opt)
             X_umap = umap.fit_transform(self.X_svd)
+            self.X_umap = X_umap
         else:
             X_umap = self.X_svd
 
