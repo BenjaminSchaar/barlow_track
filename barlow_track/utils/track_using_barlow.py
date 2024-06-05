@@ -22,7 +22,7 @@ from barlow_track.utils.utils_tracking import WormTsneTracker
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
-                                   track_using_overlapping_windows=False,
+                                   tracking_mode='global',
                                    to_plot_relative_accuracy=True):
     """
     Tracks a project using a pretrained Barlow Twins model
@@ -42,7 +42,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     model_fname - the exact name of the model file, or the full path to the model file
         Example: /scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search/trial_0/resnet50-1.pth
     results_subfolder
-    track_using_overlapping_windows - Whether to use the windowed clustering or the global clustering
+    tracking_mode - Which tracking mode. Options: 'global', 'overlapping_windows', 'streaming'
     to_plot_relative_accuracy
 
     Returns
@@ -151,13 +151,15 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                   subfolder=results_subfolder)
 
     # Do the clustering
-    if track_using_overlapping_windows:
-        project_config.logger.info("Running: track_using_overlapping_windows")
-        df_combined, all_dfs = tracker.track_using_overlapping_windows()
-    else:
+    if tracking_mode == 'global':
         project_config.logger.info("Running: track_using_global_clusterer")
         df_combined = tracker.track_using_global_clusterer()
-        # df_combined = tracker.track_using_streaming_clusterer()
+    elif tracking_mode == 'overlapping_windows':
+        project_config.logger.info("Running: track_using_overlapping_windows")
+        df_combined, all_dfs = tracker.track_using_overlapping_windows()
+    elif tracking_mode == 'streaming':
+        project_config.logger.info("Running: track_using_streaming_clusterer")
+        df_combined = tracker.track_using_streaming_clusterer()
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
     project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)
