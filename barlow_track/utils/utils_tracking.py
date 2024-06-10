@@ -96,15 +96,16 @@ class WormTsneTracker:
         """
         logging.info("Converting cluster object to dataframe...")
         if isinstance(db_svd, (list, np.ndarray)):
-            labels = db_svd
+            all_labels = db_svd
+            all_likelihoods = None
         else:
-            labels = db_svd.labels_
+            all_labels = db_svd.labels_
+            all_likelihoods = db_svd.probabilities_
 
         time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
         if n_vols is None:
             n_vols = self.n_volumes_per_window
 
-        cluster_dict = {}
         # Assume the labels are in sequential order
         i_current_time = 0
         if vol_ind is None:
@@ -127,27 +128,36 @@ class WormTsneTracker:
                 tmp[:] = np.nan
                 return tmp
 
+        cluster_dict = defaultdict(get_empty_col)
+
         current_global_ind = list(time_index_to_linear_feature_indices[current_time].copy())
         current_local_ind = 0
 
         if labels_are_in_feature_order:
             # i.e. labels are in the same order as the features, so we can just iterate through them
-            for i, label in enumerate(labels):
+            for i, label in enumerate(all_labels):
                 if label == -1:
                     continue
                 else:
                     this_neuron_name = int2name_neuron(label + 1)
-                    key = (this_neuron_name, 'raw_neuron_ind_in_list')
+                    neuron_key = (this_neuron_name, 'raw_neuron_ind_in_list')
+                    likelihood_key = (this_neuron_name, 'likelihood')
                     t = self.dict_linear_index_to_time[i]
                     raw_neuron_ind = self.linear_ind_to_raw_neuron_ind[i]
+                    # Only works if a full cluster object was passed
+                    likelihood = all_likelihoods[i]
 
-                    if key not in cluster_dict:
-                        cluster_dict[key] = get_empty_col()
-
-                    if np.isnan(cluster_dict[key][t]):
+                    if np.isnan(cluster_dict[neuron_key][t]):
                         # This is a numpy array
-                        cluster_dict[key][t] = raw_neuron_ind
+                        cluster_dict[neuron_key][t] = raw_neuron_ind
+                        cluster_dict[likelihood_key][t] = likelihood
                     else:
+                        # Then a neuron has been assigned twice, so compare the likelihoods
+                        previous_likelihood = cluster_dict[likelihood_key][t]
+                        if likelihood > previous_likelihood:
+                            cluster_dict[neuron_key][t] = raw_neuron_ind
+                            cluster_dict[likelihood_key][t] = likelihood
+                        # logging.warning(f"Multiple assignments found for {this_neuron_name} at t={t}, ignoring second")
                         pass
         else:
             # Me from the future... I really don't know why I need all this!
@@ -155,7 +165,7 @@ class WormTsneTracker:
             if self.linear_ind_to_raw_neuron_ind is not None:
                 all_linear_ind = self.get_linear_indices_from_time(start_volume, time_index_to_linear_feature_indices,
                                                                    vol_ind, n_vols=n_vols)
-                for i, label in enumerate(labels):
+                for i, label in enumerate(all_labels):
                     # Determine neuron name based on class
                     if label == -1:
                         continue
@@ -179,7 +189,7 @@ class WormTsneTracker:
 
             else:
                 logging.warning("Assumes the data is in time order")
-                for i, label in enumerate(labels):
+                for i, label in enumerate(all_labels):
                     global_ind = current_global_ind.pop(0)
 
                     if label == -1:
@@ -409,6 +419,7 @@ class WormTsneTracker:
         # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
         db_opt['min_cluster_size'] = int(0.3 * self.num_frames)
         db_opt['max_cluster_size'] = int(1.1 * self.num_frames)
+        db_opt['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
         logging.info("Clustering...")
         db_svd = HDBSCAN(**db_opt).fit(X_umap)
         self.global_clusterer = db_svd
