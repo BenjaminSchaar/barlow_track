@@ -35,6 +35,7 @@ class WormTsneTracker:
     df_global: pd.DataFrame = None
     streaming_clusterer: callable = None
     df_final: pd.DataFrame = None
+    global_clusterer: callable = None
 
     # For visualization
     X_umap: np.array = None
@@ -410,6 +411,7 @@ class WormTsneTracker:
         db_opt['max_cluster_size'] = int(1.1 * self.num_frames)
         logging.info("Clustering...")
         db_svd = HDBSCAN(**db_opt).fit(X_umap)
+        self.global_clusterer = db_svd
 
         # Convert to dataframe
         df_cluster = self.cluster_obj2dataframe(db_svd, start_volume=0, n_vols=self.num_frames,
