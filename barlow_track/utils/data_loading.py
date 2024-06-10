@@ -19,7 +19,7 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
         bbox = p.bbox
         # Expand to get the neighborhood
 
-        dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)
+        dat, _ = get_3d_crop_using_bbox_or_centroid(bbox, sz, target_sz, this_red)
         all_dat.append(dat)  # TODO: preallocate
         all_bbox.append(bbox)
 
@@ -46,15 +46,13 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     tracked_segs = set(seg2name.keys())
 
     # Get a bbox for all neurons in 3d, but skip the untracked mask indices
-    this_seg = project_data.raw_segmentation[t, ...]
-    props = regionprops(this_seg)
-
     all_dat_dict = {}
-    this_red = np.array(project_data.red_data[t, ...])
-    sz = project_data.red_data.shape
 
-    for p in props:
-        this_seg_label = p.label
+    # Use the metadata as calculated in the project
+    mdata = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t)
+
+    for row in mdata.iterrows():
+        this_seg_label = int(row['label'])
         if this_seg_label in tracked_segs:
             this_name = seg2name[this_seg_label]
         else:
@@ -64,10 +62,10 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
                 # Make a unique name for this untracked object, but keep the correct label
                 ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
                 this_name = f"untracked_time_{t}_{ind_in_list}"
-        bbox = p.bbox
-
-        dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)
-
+        centroid = row['centroid']
+        # Repeat to be zxyzxy
+        zxyzxy = [centroid[0], centroid[1], centroid[2], centroid[0], centroid[1], centroid[2]]
+        dat, _ = get_3d_crop_using_bbox_or_centroid(zxyzxy, sz, target_sz, this_red)
         all_dat_dict[this_name] = dat
 
     return all_dat_dict, seg2name, which_neurons
@@ -105,19 +103,19 @@ def get_bbox_data_for_volume_lazy(project_data, t, target_sz=np.array([8, 64, 64
         bbox = p.bbox
 
         this_name = seg2name[this_label]
-        dat, _ = get_3d_crop_using_bbox(bbox, sz, target_sz, this_red)
+        dat, _ = get_3d_crop_using_bbox_or_centroid(bbox, sz, target_sz, this_red)
 
         yield this_name, dat
 
 
-def get_3d_crop_using_bbox(bbox, sz, target_sz, this_red):
+def get_3d_crop_using_bbox_or_centroid(zxyzxy, sz, target_sz, this_red):
     """
     A real bbox does not need to be passed. Alternative is just the centroid in this 6-value format:
         zxyzxy
 
     Parameters
     ----------
-    bbox
+    zxyzxy
     sz - size of full video (4d)
     target_sz - size of output crop (3d)
     this_red - array of video. Must be slice-indexable
@@ -126,17 +124,17 @@ def get_3d_crop_using_bbox(bbox, sz, target_sz, this_red):
     -------
 
     """
-    z_mean = int((bbox[0] + bbox[3]) / 2)
+    z_mean = int((zxyzxy[0] + zxyzxy[3]) / 2)
     z0 = np.clip(z_mean - int(target_sz[0] / 2), a_min=0, a_max=sz[1])
     z1 = np.clip(z_mean + int(target_sz[0] / 2), a_min=0, a_max=sz[1])
     if z1 - z0 > target_sz[0]:
         z1 = z0 + target_sz[0]
-    x_mean = int((bbox[1] + bbox[4]) / 2)
+    x_mean = int((zxyzxy[1] + zxyzxy[4]) / 2)
     x0 = np.clip(x_mean - int(target_sz[1] / 2), a_min=0, a_max=sz[2])
     x1 = np.clip(x_mean + int(target_sz[1] / 2), a_min=0, a_max=sz[2])
     if x1 - x0 > target_sz[1]:
         x1 = x0 + target_sz[1]
-    y_mean = int((bbox[2] + bbox[5]) / 2)
+    y_mean = int((zxyzxy[2] + zxyzxy[5]) / 2)
     y0 = np.clip(y_mean - int(target_sz[2] / 2), a_min=0, a_max=sz[3])
     y1 = np.clip(y_mean + int(target_sz[2] / 2), a_min=0, a_max=sz[3])
     if y1 - y0 > target_sz[2]:
