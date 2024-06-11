@@ -1,5 +1,6 @@
 import logging
 
+import pandas as pd
 import numpy as np
 from skimage.measure import regionprops
 from wbfm.utils.external.utils_pandas import cast_int_or_nan
@@ -47,12 +48,15 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
 
     # Get a bbox for all neurons in 3d, but skip the untracked mask indices
     all_dat_dict = {}
+    this_red = project_data.red_data[t, ...]
+    sz = this_red.shape  # Size of one volume
 
     # Use the metadata as calculated in the project
-    mdata = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t)
+    row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t)
+    mdata = pd.DataFrame(dict(zip(column_names, row_data)))
 
-    for row in mdata.iterrows():
-        this_seg_label = int(row['label'])
+    for i, row in mdata.iterrows():
+        this_seg_label = int(row['raw_segmentation_id'])
         if this_seg_label in tracked_segs:
             this_name = seg2name[this_seg_label]
         else:
@@ -62,9 +66,9 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
                 # Make a unique name for this untracked object, but keep the correct label
                 ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
                 this_name = f"untracked_time_{t}_{ind_in_list}"
-        centroid = row['centroid']
+        zxy = [row['z'], row['x'], row['y']]
         # Repeat to be zxyzxy
-        zxyzxy = [centroid[0], centroid[1], centroid[2], centroid[0], centroid[1], centroid[2]]
+        zxyzxy = [zxy[0], zxy[1], zxy[2], zxy[0], zxy[1], zxy[2]]
         dat, _ = get_3d_crop_using_bbox_or_centroid(zxyzxy, sz, target_sz, this_red)
         all_dat_dict[this_name] = dat
 
