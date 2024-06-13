@@ -49,7 +49,7 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     # Get a bbox for all neurons in 3d, but skip the untracked mask indices
     all_dat_dict = {}
     this_red = project_data.red_data[t, ...]
-    sz = this_red.shape  # Size of one volume
+    sz = project_data.red_data.shape
 
     # Use the metadata as calculated in the project
     row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t)
