@@ -219,6 +219,14 @@ def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_
 
 
 def build_embedding_metadata(all_embeddings, project_data):
+    """
+    Builds the metadata for the embeddings, including the linear index to ground truth index mapping, if any
+    Complexity comes because there are two ways to build embedding keys:
+    1. If there is ground truth, use the neuron name
+    2. If there is no ground truth, use the metadata in the previously generated embedding key, which look like:
+        untracked_time_0_1234 (i.e. take the last number as the raw_neuron_ind)
+
+    """
     project_data.project_config.logger.info("Building embedding metadata")
     # Collect metadata
     df_tracks = project_data.get_final_tracks_only_finished_neurons()[0]
@@ -247,6 +255,8 @@ def build_embedding_metadata(all_embeddings, project_data):
             else:
                 # Based on an expected name like: untracked_time_0_1234, where the last number is the raw_neuron_ind
                 # i.e. using segmentation_metadata.mask_index_to_i_in_array for that object
+                assert 'neuron' not in name, \
+                    f"Found neuron in object named: {name}; this branch should only be for untracked objects"
                 linear_ind_to_raw_neuron_ind[i_linear_ind] = int(name.split('_')[-1])
             i_linear_ind += 1
         X.append(vols_array)

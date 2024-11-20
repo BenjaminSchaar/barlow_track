@@ -102,7 +102,6 @@ class WormTsneTracker:
             all_labels = db_svd.labels_
             all_likelihoods = db_svd.probabilities_
 
-        time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
         if n_vols is None:
             n_vols = self.n_volumes_per_window
 
@@ -129,9 +128,6 @@ class WormTsneTracker:
                 return tmp
 
         cluster_dict = defaultdict(get_empty_col)
-
-        current_global_ind = list(time_index_to_linear_feature_indices[current_time].copy())
-        current_local_ind = 0
 
         if labels_are_in_feature_order:
             # i.e. labels are in the same order as the features, so we can just iterate through them
@@ -161,6 +157,9 @@ class WormTsneTracker:
                         pass
         else:
             # Me from the future... I really don't know why I need all this!
+            time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
+            current_global_ind = list(time_index_to_linear_feature_indices[current_time].copy())
+            current_local_ind = 0
             # I think it only makes sense if I'm doing a specific window of time points
             if self.linear_ind_to_raw_neuron_ind is not None:
                 all_linear_ind = self.get_linear_indices_from_time(start_volume, time_index_to_linear_feature_indices,
@@ -449,25 +448,25 @@ class WormTsneTracker:
         return df_global
 
 
-def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
-    """
-    Uses tsne + hdbscan clusters on neuron feature space as a tracker
-
-    Parameters
-    ----------
-    project_config
-
-    Returns
-    -------
-
-    """
-
-    tracking_config = project_config.get_tracking_config()
-
-    # Track
-    tracker = WormTsneTracker.load_from_config(project_config)
-    df_combined, all_raw_dfs = tracker.track_using_overlapping_windows()
-
-    # Save
-    fname = "3-tracking/postprocessing/df_cluster_tracker.h5"
-    tracking_config.save_data_in_local_project(fname, df_combined, also_save_csv=True)
+# def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
+#     """
+#     Uses tsne + hdbscan clusters on neuron feature space as a tracker
+#
+#     Parameters
+#     ----------
+#     project_config
+#
+#     Returns
+#     -------
+#
+#     """
+#
+#     tracking_config = project_config.get_tracking_config()
+#
+#     # Track
+#     tracker = WormTsneTracker.load_from_config(project_config)
+#     df_combined, all_raw_dfs = tracker.track_using_overlapping_windows()
+#
+#     # Save
+#     fname = "3-tracking/postprocessing/df_cluster_tracker.h5"
+#     tracking_config.save_data_in_local_project(fname, df_combined, also_save_csv=True)
