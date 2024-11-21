@@ -75,13 +75,15 @@ class WormTsneTracker:
         all_start_volumes.append(self.num_frames - self.n_volumes_per_window - 1)
         return all_start_volumes
 
-    def cluster_obj2dataframe(self, db_svd, start_volume: int = None, vol_ind: list = None,
+    def cluster_obj2dataframe(self, db_svd, start_volume: int = 0, vol_ind: list = None,
                               n_vols=None, labels_are_in_feature_order=False):
         """
         Associate cluster label ids to a (time, local ind) tuple
         i.e. build a dict
         Note: the dict key should be a tuple of (neuron_name, 'raw_neuron_ind_in_list'),
           because we want it to be a multilevel dataframe
+
+        This does a simple assignment of the most likely neuron at each time point, if there are multiple
 
         Parameters
         ----------
