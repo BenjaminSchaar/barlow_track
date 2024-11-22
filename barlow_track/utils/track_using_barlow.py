@@ -163,6 +163,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         df_combined = tracker.track_using_streaming_clusterer()
 
     # Add metadata stored in the project
+    project_config.logger.info("Adding metadata to the final dataframe")
     df_combined = add_metadata_to_df_raw_ind(df_combined, project_data.segmentation_metadata)
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
