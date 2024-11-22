@@ -16,6 +16,7 @@ from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.general.utils_filenames import pickle_load_binary
 from wbfm.utils.projects.utils_neuron_names import name2int_neuron_and_tracklet
+from wbfm.utils.projects.utils_redo_steps import add_metadata_to_df_raw_ind
 from barlow_track.utils.utils_tracking import WormTsneTracker
 
 
@@ -160,6 +161,9 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     elif tracking_mode == 'streaming':
         project_config.logger.info("Running: track_using_streaming_clusterer")
         df_combined = tracker.track_using_streaming_clusterer()
+
+    # Add metadata stored in the project
+    df_combined = add_metadata_to_df_raw_ind(df_combined, project_data.segmentation_metadata)
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
     project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)
