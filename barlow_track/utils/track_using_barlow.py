@@ -234,7 +234,7 @@ def build_embedding_metadata(all_embeddings, project_data):
     """
     project_data.project_config.logger.info("Building embedding metadata")
     # Collect metadata
-    df_tracks = project_data.get_final_tracks_only_finished_neurons()[0]
+    df_gt_tracks = project_data.get_final_tracks_only_finished_neurons()[0]
     X = []
     time_index_to_linear_feature_indices = defaultdict(list)
     linear_ind_to_raw_neuron_ind = {}
@@ -244,13 +244,15 @@ def build_embedding_metadata(all_embeddings, project_data):
         t_list = list(vols_all_times.keys())
         vols_array = np.vstack(list(vols_all_times.values()))
 
-        try:
-            df_this_neuron = df_tracks[name, 'raw_neuron_ind_in_list']
-            gt_ind = name2int_neuron_and_tracklet(name)
-            has_gt = True
-        except KeyError:
-            gt_ind = -1
-            has_gt = False
+        gt_ind = -1
+        has_gt = False
+        if df_gt_tracks is not None:
+            try:
+                df_this_neuron = df_gt_tracks[name, 'raw_neuron_ind_in_list']
+                gt_ind = name2int_neuron_and_tracklet(name)
+                has_gt = True
+            except KeyError:
+                pass
 
         for t_global in t_list:
             time_index_to_linear_feature_indices[t_global].append(i_linear_ind)

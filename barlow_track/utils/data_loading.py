@@ -40,7 +40,10 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
         which_neurons = project_data.neuron_names
 
     # Get the tracked mask indices, with a mapping from their neuron name
-    name2seg = dict(project_data.final_tracks.loc[t, (slice(None), 'raw_segmentation_id')].droplevel(1))
+    if project_data.final_tracks is not None:
+        name2seg = dict(project_data.final_tracks.loc[t, (slice(None), 'raw_segmentation_id')].droplevel(1))
+    else:
+        name2seg = {}
     tracked_segs = project_data.finished_neuron_names()
     seg2name = {}
     for k, v in name2seg.items():
