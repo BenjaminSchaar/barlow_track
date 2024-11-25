@@ -403,7 +403,7 @@ class WormTsneTracker:
         -------
         """
         if umap_opt is None:
-            umap_opt = dict(n_components=2, n_neighbors=10, min_dist=0.1)
+            umap_opt = dict(n_components=10, n_neighbors=10)
 
         # Do umap projection
         if umap_projection:
@@ -419,8 +419,8 @@ class WormTsneTracker:
         db_opt = self.opt_db.copy()
         # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
         db_opt['min_cluster_size'] = int(0.5 * self.num_frames)
-        db_opt['min_samples']      = int(0.01 * self.num_frames)
-        db_opt['max_cluster_size'] = int(1.1 * self.num_frames)
+        db_opt['min_samples']      = int(0.02 * self.num_frames)
+        # db_opt['max_cluster_size'] = int(1.1 * self.num_frames)  # Doesn't work
         db_opt['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
         logging.info("Clustering...")
         db_svd = HDBSCAN(**db_opt).fit(X_umap)
