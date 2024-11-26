@@ -167,7 +167,13 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     df_combined = add_metadata_to_df_raw_ind(df_combined, project_data.segmentation_metadata)
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
-    project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)
+    fname = project_config.save_data_in_local_project(df_combined, fname, make_sequential_filename=True)
+
+    # Also update the project config file to point to this new h5 file
+    fname_local = project_config.unresolve_absolute_path(fname)
+    tracking_config = project_config.get_tracking_config()
+    tracking_config.config['final_3d_tracks_df'] = fname_local
+    tracking_config.update_self_on_disk()
 
     if to_plot_relative_accuracy:
         plot_relative_accuracy(df_combined, project_data, results_subfolder)
