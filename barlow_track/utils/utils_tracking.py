@@ -58,9 +58,6 @@ class WormTsneTracker:
                             f"({self.num_frames}); setting to num_frames.")
             self.n_volumes_per_window = self.num_frames
 
-        if self.verbose >= 1:
-            print("Successfully initialized!")
-
     @property
     def global_vol_ind(self):
         return np.linspace(0, self.num_frames, self.n_volumes_per_window, dtype=int, endpoint=False)
