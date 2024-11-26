@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 #SBATCH --job-name=barlow_training
 #SBATCH --nodes=1                   # Use one node
 #SBATCH --time=1-00:00:00
