@@ -89,7 +89,7 @@ def plot_clusters(db, Y, class_labels=True, class_label_for_noise=False):
 
 def plot_relative_accuracy(df_combined, project_data, results_subfolder=None, to_save=True):
     num_frames = df_combined.shape[0] - 1
-    df_base = project_data.get_final_tracks_only_finished_neurons()[0].loc[:num_frames, :]
+    db_base = project_data.get_final_tracks_only_finished_neurons()[0]
     if df_base is None:
         project_data.logger.warning("No ground truth to compare to, using all tracks instead")
         df_base = project_data.final_tracks.loc[:num_frames, :]
