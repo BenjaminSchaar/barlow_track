@@ -24,7 +24,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
                                    tracking_mode='global',
-                                   to_plot_relative_accuracy=True):
+                                   to_plot_relative_accuracy=False):
     """
     Tracks a project using a pretrained Barlow Twins model
 
