@@ -88,8 +88,10 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             fname = os.path.join(results_subfolder_full, 'linear_ind_to_raw_neuron_ind.pickle')
             linear_ind_to_raw_neuron_ind = pickle_load_binary(fname)
 
+            svd_components = 50 if project_data.num_frames > 500 else int(project_data.num_frames / 10)
+
             opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
-                       svd_components=50,
+                       svd_components=svd_components,
                        cluster_directly_on_svd_space=True,
                        n_clusters_per_window=3,
                        n_volumes_per_window=120,
