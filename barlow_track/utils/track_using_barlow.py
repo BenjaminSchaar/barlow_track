@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.general.utils_filenames import pickle_load_binary
-from wbfm.utils.projects.utils_neuron_names import name2int_neuron_and_tracklet
+from wbfm.utils.external.utils_neuron_names import name2int_neuron_and_tracklet
 from wbfm.utils.projects.utils_redo_steps import add_metadata_to_df_raw_ind
 from barlow_track.utils.utils_tracking import WormTsneTracker
 
