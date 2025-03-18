@@ -1,6 +1,5 @@
 import torch.nn as nn
-from pytorch3dunet.unet3d.buildingblocks import ResNetBlockSE, create_encoders
-from pytorch3dunet.unet3d.utils import number_of_features_per_level
+from barlow_track.utils.utils_3dunet import number_of_features_per_level, ResNetBlockSE, create_encoders
 
 
 class Siamese(nn.Module):
