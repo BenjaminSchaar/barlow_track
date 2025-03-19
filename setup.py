@@ -1,4 +1,5 @@
 from setuptools import setup
+import setuptools
 
 setup(name='barlow_track',
       version='0.1.0',
