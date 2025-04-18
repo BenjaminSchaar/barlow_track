@@ -59,7 +59,7 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     sz = project_data.red_data.shape
 
     # Use the metadata as calculated in the project
-    row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t)
+    row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t, as_dataframe=False)
     mdata = pd.DataFrame(dict(zip(column_names, row_data)))
 
     for i, row in mdata.iterrows():
