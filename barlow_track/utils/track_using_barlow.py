@@ -50,9 +50,12 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     -------
 
     """
+    project_data = ProjectData.load_final_project_data_from_config(project_config)
+    project_config = project_data.project_config
+
     if model_fname is None:
         model_fname = 'checkpoint_barlow_small_projector'
-        project_config.logger.warning(f"Using default network name: {model_fname}")
+        project_data.logger.warning(f"Using default network name: {model_fname}")
     if results_subfolder is None:
         # The default folder is built from the model fname, but removes the "checkpoint_" prefix
         # Also if it is a full path, just take the last foldername
@@ -62,25 +65,21 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             results_subfolder = str(model_fname)
         results_subfolder = results_subfolder.replace('checkpoint_', '')
         results_subfolder = f'3-tracking/{results_subfolder}'
-        project_config.logger.info(f"Output subfolder for results: {results_subfolder}")
-
-    if not isinstance(project_config, ModularProjectConfig):
-        project_config = ModularProjectConfig(str(project_config))
-    project_data = ProjectData.load_final_project_data_from_config(project_config)
+        project_data.logger.info(f"Output subfolder for results: {results_subfolder}")
 
     # Check to see if the results already exist
     results_subfolder_full = project_config.resolve_relative_path(results_subfolder)
 
     tracker_fname = os.path.join(results_subfolder_full, 'worm_tracker_barlow.pickle')
     if Path(tracker_fname).exists():
-        project_config.logger.info("Found already saved tracker, loading...")
+        project_data.logger.info("Found already saved tracker, loading...")
         tracker = pickle_load_binary(tracker_fname)
 
     else:
         # Next try: load metadata
         embedding_fname = os.path.join(results_subfolder_full, 'embedding.zarr')
         if Path(embedding_fname).exists():
-            project_config.logger.info("Found already saved embedding files, loading...")
+            project_data.logger.info("Found already saved embedding files, loading...")
             X = np.array(zarr.open(embedding_fname))
 
             fname = os.path.join(results_subfolder_full, 'time_index_to_linear_feature_indices.pickle')
@@ -151,7 +150,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 
         save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
-                                  subfolder=results_subfolder)
+                                  subfolder=results_subfolder_full)
 
     # Do the clustering
     if tracking_mode == 'global':
@@ -180,7 +179,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     tracking_config.update_self_on_disk()
 
     if to_plot_relative_accuracy:
-        plot_relative_accuracy(df_combined, project_data, results_subfolder)
+        plot_relative_accuracy(df_combined, project_data, results_subfolder_full)
 
 
 def embed_using_barlow(gpu, model, project_data, target_sz):
