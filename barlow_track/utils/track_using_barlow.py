@@ -57,14 +57,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         model_fname = 'checkpoint_barlow_small_projector'
         project_data.logger.warning(f"Using default network name: {model_fname}")
     if results_subfolder is None:
-        # The default folder is built from the model fname, but removes the "checkpoint_" prefix
-        # Also if it is a full path, just take the last foldername
-        if Path(model_fname).is_absolute():
-            results_subfolder = str(Path(model_fname).parent.stem)
-        else:
-            results_subfolder = str(model_fname)
-        results_subfolder = results_subfolder.replace('checkpoint_', '')
-        results_subfolder = f'3-tracking/{results_subfolder}'
+        results_subfolder = '3-tracking/barlow_tracker'
         project_data.logger.info(f"Output subfolder for results: {results_subfolder}")
 
     # Check to see if the results already exist
