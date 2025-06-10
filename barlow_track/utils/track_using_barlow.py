@@ -270,3 +270,108 @@ def build_embedding_metadata(all_embeddings, project_data):
             i_linear_ind += 1
         X.append(vols_array)
     return linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices, X
+
+
+# Attempts to get vibe coding to work
+from barlow_track.utils.barlow import load_barlow_model
+from barlow_track.utils.barlow import NeuronImageWithGTDataset
+
+
+@dataclass
+class BarlowProject:
+    model_folder: Path
+    target_sz: tuple
+    gpu: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model: torch.nn.Module = None
+    args: dict = None
+    logger: object = None
+    num_frames: int = None
+    segmentation_metadata: dict = None
+
+    # Fields for intermediate products
+    all_embeddings: dict = field(default_factory=lambda: defaultdict(dict))
+    linear_ind_to_gt_ind: dict = field(default_factory=dict)
+    linear_ind_to_raw_neuron_ind: dict = field(default_factory=dict)
+    time_index_to_linear_feature_indices: dict = field(default_factory=lambda: defaultdict(list))
+    tracker: object = None
+    tracker_no_svd: object = None
+
+    def __post_init__(self):
+        self.model_folder = Path(self.model_folder)
+        # Loop through intermediate products and check if they exist; if so, load them:
+
+
+    @classmethod
+    def from_project_config(cls, project_config, model_folder):
+        # TODO: refactor to not need project_data.segmentation_metadata
+        # Unpack relevant data and metadata from ModularProjectConfig
+        project_data = load_project_data(project_config)
+        return cls(
+            model_folder=model_folder,
+            target_sz=None,  # Will be set after loading the model
+            logger=project_config.logger,
+            num_frames=project_data.num_frames,
+            segmentation_metadata=project_data.segmentation_metadata
+        )
+
+    def load_model(self, model_fname):
+        model_path = self.model_folder / model_fname
+        self.gpu, self.model, self.args = load_barlow_model(model_path)
+        self.target_sz = self.args.target_sz
+        self.model.eval()
+
+    def embed_data(self):
+        if self.all_embeddings:
+            self.logger.info("Embeddings already exist. Returning existing embeddings.")
+            return self.all_embeddings
+
+        # TODO: Refactor NeuronImageWithGTDataset to not need wbfm classes
+        dataset = NeuronImageWithGTDataset(self.segmentation_metadata, self.num_frames - 1, self.target_sz,
+                                           include_untracked=True)
+        self.all_embeddings = defaultdict(dict)
+        self.logger.info("Embedding using Barlow model")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+            for t, (batch, ids) in tqdm(enumerate(dataset), total=len(dataset)):
+                batch = batch.to(self.gpu)
+
+                def _parallel_func(name):
+                    idx = ids.index(name)
+                    crop = torch.unsqueeze(batch[:, idx, ...], 0)
+                    self.all_embeddings[name][t] = self.model.embed(crop).cpu().detach().numpy()
+
+            # no_grad is thread-local
+            # https://github.com/pytorch/pytorch/issues/20528
+            # with torch.no_grad():
+            futures = {executor.submit(_parallel_func, n): n for n in ids}
+            for future in concurrent.futures.as_completed(futures):
+                future.result()
+
+        self.logger.info(f"Finished embedding {len(self.all_embeddings)} neurons")
+
+    def save_results(self):
+        subfolder = self.model_folder
+
+        filenames = self._generate_filenames(subfolder)
+
+        pickle_data_in_project(self.segmentation_metadata, self.tracker, filenames['tracker'])
+        pickle_data_in_project(self.segmentation_metadata, self.tracker_no_svd, filenames['tracker_no_svd'])
+
+        z = zarr.open_array(filenames['embedding'], shape=self.all_embeddings.shape, chunks=(10000, 256))
+        z[:] = self.all_embeddings
+
+        pickle_data_in_project(self.segmentation_metadata, self.time_index_to_linear_feature_indices,
+                               filenames['time_index_to_linear_feature_indices'])
+        pickle_data_in_project(self.segmentation_metadata, self.linear_ind_to_raw_neuron_ind,
+                               filenames['linear_ind_to_raw_neuron_ind'])
+        pickle_data_in_project(self.segmentation_metadata, self.linear_ind_to_gt_ind, filenames['linear_ind_to_gt_ind'])
+
+    def _generate_filenames(self, subfolder):
+        return {
+            'tracker': f'{subfolder}/worm_tracker_barlow.pickle',
+            'tracker_no_svd': f'{subfolder}/worm_tracker_barlow_full.pickle',
+            'embedding': f'{subfolder}/embedding.zarr',
+            'time_index_to_linear_feature_indices': f'{subfolder}/time_index_to_linear_feature_indices.pickle',
+            'linear_ind_to_raw_neuron_ind': f'{subfolder}/linear_ind_to_raw_neuron_ind.pickle',
+            'linear_ind_to_gt_ind': f'{subfolder}/linear_ind_to_gt_ind.pickle',
+        }
