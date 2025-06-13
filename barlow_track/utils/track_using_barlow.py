@@ -1,8 +1,11 @@
 import concurrent
+from copyreg import pickle
+from dataclasses import dataclass, field
 import logging
 import os
 from collections import defaultdict
 from pathlib import Path
+from pyexpat import model
 import dask.array as da
 import numpy as np
 import torch
@@ -279,7 +282,7 @@ from barlow_track.utils.barlow import NeuronImageWithGTDataset
 
 @dataclass
 class BarlowProject:
-    model_folder: Path
+    results_folder: Path
     target_sz: tuple
     gpu: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model: torch.nn.Module = None
@@ -294,28 +297,13 @@ class BarlowProject:
     linear_ind_to_raw_neuron_ind: dict = field(default_factory=dict)
     time_index_to_linear_feature_indices: dict = field(default_factory=lambda: defaultdict(list))
     tracker: object = None
-    tracker_no_svd: object = None
+    # tracker_no_svd: object = None
 
     def __post_init__(self):
-        self.model_folder = Path(self.model_folder)
+        self.results_folder = Path(self.results_folder)
         # Loop through intermediate products and check if they exist; if so, load them:
 
-
-    @classmethod
-    def from_project_config(cls, project_config, model_folder):
-        # TODO: refactor to not need project_data.segmentation_metadata
-        # Unpack relevant data and metadata from ModularProjectConfig
-        project_data = load_project_data(project_config)
-        return cls(
-            model_folder=model_folder,
-            target_sz=None,  # Will be set after loading the model
-            logger=project_config.logger,
-            num_frames=project_data.num_frames,
-            segmentation_metadata=project_data.segmentation_metadata
-        )
-
-    def load_model(self, model_fname):
-        model_path = self.model_folder / model_fname
+    def load_model(self, model_path):
         self.gpu, self.model, self.args = load_barlow_model(model_path)
         self.target_sz = self.args.target_sz
         self.model.eval()
@@ -350,28 +338,53 @@ class BarlowProject:
         self.logger.info(f"Finished embedding {len(self.all_embeddings)} neurons")
 
     def save_results(self):
-        subfolder = self.model_folder
+        subfolder = self.results_folde
 
         filenames = self._generate_filenames(subfolder)
 
-        pickle_data_in_project(self.segmentation_metadata, self.tracker, filenames['tracker'])
-        pickle_data_in_project(self.segmentation_metadata, self.tracker_no_svd, filenames['tracker_no_svd'])
+        # Use pickle_load_binary or project_config.pickle_data_in_local_project if available
+        # Here, using pickle_load_binary as an example; replace with your actual pickling function if needed
 
-        z = zarr.open_array(filenames['embedding'], shape=self.all_embeddings.shape, chunks=(10000, 256))
+        with open(filenames['tracker'], 'wb') as f:
+            pickle.dump(self.tracker, f)
+
+        z = zarr.open_array(filenames['embedding'], shape=self.all_embeddings.shape)
         z[:] = self.all_embeddings
 
-        pickle_data_in_project(self.segmentation_metadata, self.time_index_to_linear_feature_indices,
-                               filenames['time_index_to_linear_feature_indices'])
-        pickle_data_in_project(self.segmentation_metadata, self.linear_ind_to_raw_neuron_ind,
-                               filenames['linear_ind_to_raw_neuron_ind'])
-        pickle_data_in_project(self.segmentation_metadata, self.linear_ind_to_gt_ind, filenames['linear_ind_to_gt_ind'])
+        with open(filenames['time_index_to_linear_feature_indices'], 'wb') as f:
+            pickle.dump(self.time_index_to_linear_feature_indices, f)
+        with open(filenames['linear_ind_to_raw_neuron_ind'], 'wb') as f:
+            pickle.dump(self.linear_ind_to_raw_neuron_ind, f)
+        with open(filenames['linear_ind_to_gt_ind'], 'wb') as f:
+            pickle.dump(self.linear_ind_to_gt_ind, f)
 
     def _generate_filenames(self, subfolder):
         return {
             'tracker': f'{subfolder}/worm_tracker_barlow.pickle',
-            'tracker_no_svd': f'{subfolder}/worm_tracker_barlow_full.pickle',
             'embedding': f'{subfolder}/embedding.zarr',
             'time_index_to_linear_feature_indices': f'{subfolder}/time_index_to_linear_feature_indices.pickle',
             'linear_ind_to_raw_neuron_ind': f'{subfolder}/linear_ind_to_raw_neuron_ind.pickle',
             'linear_ind_to_gt_ind': f'{subfolder}/linear_ind_to_gt_ind.pickle',
         }
+
+
+def initialize_barlow_project_from_project_config(project_config: ModularProjectConfig):
+    # TODO: refactor to not need project_data.segmentation_metadata
+    # Unpack relevant data and metadata from ModularProjectConfig
+    project_data = ProjectData.load_final_project_data_from_config(project_config)
+    cfg = project_data.project_config.get_tracking_config()
+    results_folder = os.path.join(cfg.absolute_subfolder, 'barlow_tracking')
+    os.makedirs(results_folder, exist_ok=True)
+    if not os.path.exists(results_folder  ):
+        raise FileNotFoundError(f"Model folder does not exist: {results_folder}")
+    if not project_data.segmentation_metadata:
+        raise ValueError("Segmentation metadata is required to initialize BarlowProject")
+    # Initialize BarlowProject with the model folder and other necessary parameters
+    return BarlowProject(
+        results_folder=results_folder ,
+        target_sz=None,  # Will be set after loading the model
+        logger=project_config.logger,
+        num_frames=project_data.num_frames,
+        segmentation_metadata=project_data.segmentation_metadata
+    )
+    
