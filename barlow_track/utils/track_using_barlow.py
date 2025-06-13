@@ -11,6 +11,7 @@ import numpy as np
 import torch
 import zarr
 
+import pandas as pd
 from barlow_track.utils.barlow import load_barlow_model
 from barlow_track.utils.barlow_visualize import plot_relative_accuracy
 from sklearn.decomposition import TruncatedSVD
@@ -290,6 +291,7 @@ class BarlowProject:
     logger: object = None
     num_frames: int = None
     segmentation_metadata: dict = None
+    project_data: ProjectData = None
 
     # Fields for intermediate products
     all_embeddings: dict = field(default_factory=lambda: defaultdict(dict))
@@ -297,7 +299,11 @@ class BarlowProject:
     linear_ind_to_raw_neuron_ind: dict = field(default_factory=dict)
     time_index_to_linear_feature_indices: dict = field(default_factory=lambda: defaultdict(list))
     tracker: object = None
+    X: np.ndarray = None
     # tracker_no_svd: object = None
+
+    # Final tracks
+    df_tracks: pd.DataFrame = None
 
     def __post_init__(self):
         self.results_folder = Path(self.results_folder)
@@ -314,7 +320,7 @@ class BarlowProject:
             return self.all_embeddings
 
         # TODO: Refactor NeuronImageWithGTDataset to not need wbfm classes
-        dataset = NeuronImageWithGTDataset(self.segmentation_metadata, self.num_frames - 1, self.target_sz,
+        dataset = NeuronImageWithGTDataset(self.project_data, self.num_frames - 1, self.target_sz,
                                            include_untracked=True)
         self.all_embeddings = defaultdict(dict)
         self.logger.info("Embedding using Barlow model")
@@ -337,8 +343,83 @@ class BarlowProject:
 
         self.logger.info(f"Finished embedding {len(self.all_embeddings)} neurons")
 
-    def save_results(self):
-        subfolder = self.results_folde
+    def build_embedding_metadata(self):
+        if self.linear_ind_to_gt_ind:
+            self.logger.info("Embedding metadata already exists. Returning existing metadata.")
+            return self.linear_ind_to_gt_ind, self.linear_ind_to_raw_neuron_ind, self.time_index_to_linear_feature_indices
+
+        # Collect metadata
+        df_gt_tracks = self.segmentation_metadata.get_final_tracks_only_finished_neurons()[0]
+        X = []
+        for name, vols_all_times in self.all_embeddings.items():
+            t_list = list(vols_all_times.keys())
+            vols_array = np.vstack(list(vols_all_times.values()))
+
+            gt_ind = -1
+            has_gt = False
+            if df_gt_tracks is not None:
+                try:
+                    df_this_neuron = df_gt_tracks[name, 'raw_neuron_ind_in_list']
+                    gt_ind = name2int_neuron_and_tracklet(name)
+                    has_gt = True
+                except KeyError:
+                    pass
+
+            for t_global in t_list:
+                self.time_index_to_linear_feature_indices[t_global].append(len(X))
+                self.linear_ind_to_gt_ind[len(X)] = gt_ind
+                if has_gt:
+                    self.linear_ind_to_raw_neuron_ind[len(X)] = int(df_this_neuron[t_global])
+                else:
+                    # Based on an expected name like: untracked_time_0_1234, where the last number is the raw_neuron_ind
+                    # i.e. using segmentation_metadata.mask_index_to_i_in_array for that object
+                    assert 'neuron' not in name, \
+                        f"Found neuron in object named: {name}; this branch should only be for untracked objects"
+                    self.linear_ind_to_raw_neuron_ind[len(X)] = int(name.split('_')[-1])
+            X.append(vols_array)
+
+        self.X = np.vstack(X)
+
+        return self.linear_ind_to_gt_ind, self.linear_ind_to_raw_neuron_ind, self.time_index_to_linear_feature_indices, self.X
+
+    def track_via_clustering(self, tracking_mode='global'):
+        X = self.X
+        svd_components = 50
+        # Use dask to do the SVD, because it may be very very tall
+        if X.shape[0] > 10000:
+            chunks = (10000, X.shape[1])
+            X_dask = da.from_array(X, chunks=chunks)
+            u, s, v = da.linalg.svd(X_dask)
+            X_svd = np.array(u[:, :svd_components].compute())
+        else:
+            alg = TruncatedSVD(n_components=svd_components)
+            X_svd = alg.fit_transform(X)
+
+        # Save embeddings and trackers
+        opt = dict(time_index_to_linear_feature_indices=self.time_index_to_linear_feature_indices,
+                   svd_components=svd_components,
+                   cluster_directly_on_svd_space=True,
+                   n_clusters_per_window=3,
+                   n_volumes_per_window=120,
+                   linear_ind_to_raw_neuron_ind=self.linear_ind_to_raw_neuron_ind)
+        # TODO: Modify tracker to not be worm-specific
+        tracker = WormTsneTracker(X_svd, **opt)
+
+        self.save_intermediate_results()
+
+        # Do the clustering
+        if tracking_mode == 'global':
+            df_combined = tracker.track_using_global_clusterer()
+        elif tracking_mode == 'overlapping_windows':
+            df_combined, all_dfs = tracker.track_using_overlapping_windows()
+        elif tracking_mode == 'streaming':
+            df_combined = tracker.track_using_streaming_clusterer()
+
+        self.df_tracks = df_combined
+
+
+    def save_intermediate_results(self):
+        subfolder = self.results_folder
 
         filenames = self._generate_filenames(subfolder)
 
@@ -358,7 +439,10 @@ class BarlowProject:
         with open(filenames['linear_ind_to_gt_ind'], 'wb') as f:
             pickle.dump(self.linear_ind_to_gt_ind, f)
 
-    def _generate_filenames(self, subfolder):
+
+    def _generate_filenames(self, subfolder=None):
+        if subfolder is None:
+            subfolder = self.results_folder
         return {
             'tracker': f'{subfolder}/worm_tracker_barlow.pickle',
             'embedding': f'{subfolder}/embedding.zarr',
@@ -385,6 +469,7 @@ def initialize_barlow_project_from_project_config(project_config: ModularProject
         target_sz=None,  # Will be set after loading the model
         logger=project_config.logger,
         num_frames=project_data.num_frames,
-        segmentation_metadata=project_data.segmentation_metadata
+        segmentation_metadata=project_data.segmentation_metadata,
+        project_data=project_data
     )
     

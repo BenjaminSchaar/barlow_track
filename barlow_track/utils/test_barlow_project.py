@@ -26,36 +26,65 @@ def sample_dataset():
     return project_data
 
 @pytest.fixture
-def barlow_project(sample_dataset) -> BarlowProject:
+def barlow_project(sample_dataset, barlow_model_path) -> BarlowProject:
     # Initialize BarlowProject with the sample dataset (old style)
-    return initialize_barlow_project_from_project_config(sample_dataset)
+    barlow_project = initialize_barlow_project_from_project_config(sample_dataset)
+    assert barlow_project.target_sz is None  # Originally None, set after loading the model
+    
+    barlow_project.load_model(barlow_model_path)
+    assert barlow_project.model is not None
+    assert isinstance(barlow_project.model, BarlowTwins3d)
+    # Now this is set
+    assert barlow_project.target_sz is not None
+
+    return barlow_project
 
 # Test the BarlowProject initialization
 def test_barlow_project_initialization(barlow_project: BarlowProject):
     assert isinstance(barlow_project, BarlowProject)
     # Test fields
     assert barlow_project.results_folder is not None
-    assert barlow_project.target_sz is None  # Originally None, set after loading the model
     assert barlow_project.logger is not None
     assert barlow_project.num_frames > 0
     assert barlow_project.segmentation_metadata is not None
     
 
 # Test the BarlowProject methods
-def test_load_model(barlow_project: BarlowProject, barlow_model_path: str):
-    # Test loading the model
-    barlow_project.load_model(barlow_model_path)
-    assert barlow_project.model is not None
-    assert isinstance(barlow_project.model, BarlowTwins3d)
-    # Now this is set
-    assert barlow_project.target_sz is not None
-    
-    # TODO: get image of the correct size
+def test_dummy_model_run(barlow_project: BarlowProject, barlow_model_path: str):
+   
+    # Running the model on dummy data
     dummy_data = torch.tensor(np.random.rand(*barlow_project.target_sz), dtype=torch.float32).to(barlow_project.gpu)
     # Expects 5d tensor: (batch_size, channels, depth, height, width)
     dummy_data = dummy_data.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
     predictions = barlow_project.model.embed(dummy_data).cpu().detach().numpy()
+
     assert predictions is not None
     # Check the size of the embedding space
     latent_size = int(barlow_project.args.projector.split('-')[-1])
     assert predictions.shape == (1, latent_size)
+
+
+def test_full_model_run(barlow_project: BarlowProject):
+    # Step 1: embed the test dataset
+    barlow_project.embed_data()
+
+    # Step 2: Build metadata
+    barlow_project.build_embedding_metadata()
+
+    assert barlow_project.linear_ind_to_gt_ind is not None
+    assert barlow_project.linear_ind_to_raw_neuron_ind is not None
+    assert barlow_project.time_index_to_linear_feature_indices is not None
+    assert barlow_project.X is not None
+
+    latent_size = int(barlow_project.args.projector.split('-')[-1])
+    assert barlow_project.X.shape == (barlow_project.num_frames, latent_size)
+
+    # Step 3: Track neurons via clustering
+    barlow_project.track_via_clustering()
+    assert barlow_project.df_tracks is not None
+    assert barlow_project.df_tracks.shape[0] == barlow_project.num_frames
+
+    # Step 3b: Make sure the intermediate results are saved
+    fnames = barlow_project._generate_filenames()
+    for fname in fnames.values():
+        assert fname.exists(), f"File {fname} does not exist in results folder."
