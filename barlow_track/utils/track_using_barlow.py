@@ -293,6 +293,9 @@ class BarlowProject:
     segmentation_metadata: dict = None
     project_data: ProjectData = None
 
+    # Unpacked from the project data
+    df_gt_tracks: pd.DataFrame = None  # Ground truth tracks, if available
+
     # Fields for intermediate products
     all_embeddings: dict = field(default_factory=lambda: defaultdict(dict))
     linear_ind_to_gt_ind: dict = field(default_factory=dict)
@@ -349,7 +352,7 @@ class BarlowProject:
             return self.linear_ind_to_gt_ind, self.linear_ind_to_raw_neuron_ind, self.time_index_to_linear_feature_indices
 
         # Collect metadata
-        df_gt_tracks = self.project_data.get_final_tracks_only_finished_neurons()[0]
+        df_gt_tracks = self.df_gt_tracks
         X = []
         for name, vols_all_times in self.all_embeddings.items():
             t_list = list(vols_all_times.keys())
@@ -429,8 +432,9 @@ class BarlowProject:
         with open(filenames['tracker'], 'wb') as f:
             pickle.dump(self.tracker, f)
 
-        z = zarr.open_array(filenames['embedding'], shape=self.all_embeddings.shape)
-        z[:] = self.all_embeddings
+        # Save the embedding array (self.X) to zarr
+        z = zarr.open_array(filenames['embedding'], shape=self.X.shape, chunks=(10000, self.X.shape[1]))
+        z[:] = self.X
 
         with open(filenames['time_index_to_linear_feature_indices'], 'wb') as f:
             pickle.dump(self.time_index_to_linear_feature_indices, f)
@@ -459,7 +463,7 @@ def initialize_barlow_project_from_project_config(project_config: ModularProject
     cfg = project_data.project_config.get_tracking_config()
     results_folder = os.path.join(cfg.absolute_subfolder, 'barlow_tracking')
     os.makedirs(results_folder, exist_ok=True)
-    if not os.path.exists(results_folder  ):
+    if not os.path.exists(results_folder):
         raise FileNotFoundError(f"Model folder does not exist: {results_folder}")
     if not project_data.segmentation_metadata:
         raise ValueError("Segmentation metadata is required to initialize BarlowProject")
@@ -470,6 +474,7 @@ def initialize_barlow_project_from_project_config(project_config: ModularProject
         logger=project_config.logger,
         num_frames=project_data.num_frames,
         segmentation_metadata=project_data.segmentation_metadata,
-        project_data=project_data
+        project_data=project_data,
+        df_gt_tracks=project_data.get_final_tracks_only_finished_neurons()[0]
     )
     
