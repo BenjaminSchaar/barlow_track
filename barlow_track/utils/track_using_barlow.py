@@ -349,7 +349,7 @@ class BarlowProject:
             return self.linear_ind_to_gt_ind, self.linear_ind_to_raw_neuron_ind, self.time_index_to_linear_feature_indices
 
         # Collect metadata
-        df_gt_tracks = self.segmentation_metadata.get_final_tracks_only_finished_neurons()[0]
+        df_gt_tracks = self.project_data.get_final_tracks_only_finished_neurons()[0]
         X = []
         for name, vols_all_times in self.all_embeddings.items():
             t_list = list(vols_all_times.keys())
