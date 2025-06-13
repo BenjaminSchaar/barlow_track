@@ -77,12 +77,14 @@ def test_full_model_run(barlow_project: BarlowProject):
     assert barlow_project.X is not None
 
     latent_size = int(barlow_project.args.projector.split('-')[-1])
-    assert barlow_project.X.shape == (barlow_project.num_frames, latent_size)
+    assert barlow_project.X.shape[1] == latent_size  # shape[0] is the number of neurons, which is variable
+    num_neurons = barlow_project.X.shape[0]
 
     # Step 3: Track neurons via clustering
     barlow_project.track_via_clustering()
     assert barlow_project.df_tracks is not None
     assert barlow_project.df_tracks.shape[0] == barlow_project.num_frames
+    assert barlow_project.df_tracks.shape[1] == num_neurons  # This is the number of neurons (variable)
 
     # Step 3b: Make sure the intermediate results are saved
     fnames = barlow_project._generate_filenames()

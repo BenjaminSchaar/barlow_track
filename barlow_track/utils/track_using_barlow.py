@@ -1,5 +1,5 @@
 import concurrent
-from copyreg import pickle
+import pickle
 from dataclasses import dataclass, field
 import logging
 import os
