@@ -80,7 +80,6 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
         executor.update_parameters(cpus_per_task=16)
         executor.update_parameters(slurm_mem="128G")
-        executor.update_parameters(slurm_partition="basic,gpu")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
     total_budget = 5 if DEBUG else 30
@@ -127,12 +126,20 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         # Update every couple of minutes, because these jobs are very slow
         time.sleep(5*60)
 
-    best_parameters, (means, covariances) = ax_client.get_best_parameters()
+    best_parameters, mean_and_variance, best_trial_index, best_trial_name  = ax_client.get_best_parameters()
     print(f'Best set of parameters: {best_parameters}')
-    print(f'Mean objective value: {means}')
+    print(f'Mean objective value: {mean_and_variance}')
     # The covariance is only meaningful when multiple objectives are present.
 
     render(ax_client.get_contour_plot())
+
+    # Copy the best parameters and index to a file
+    best_params_path = os.path.join(experiment_parent_folder, 'best_parameters.yaml')
+    with open(best_params_path, 'w') as f:
+        best_parameters['best_trial_index'] = best_trial_index
+        best_parameters['best_trial_name'] = best_trial_name
+        best_parameters['mean_and_variance'] = mean_and_variance
+        YAML().dump(best_parameters, f)
 
 
 if __name__ == '__main__':
