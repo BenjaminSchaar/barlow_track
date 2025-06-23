@@ -1,5 +1,5 @@
 # BarlowTrack
-Using a modification of Barlow Twins (self-supervised learning) to track microscopy data
+Using a modification of Barlow Twins (self-supervised learning) to track single-cell resolution microscopy data, specifically designed for C. elegans neurons.
 
 ## Installation
 

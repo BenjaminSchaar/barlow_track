@@ -17,22 +17,26 @@ barlow_project_template/
 
 To start, you need:
 1. A working conda environment
-2. To clone this code (or to be able to copy this project folder from another location)
-3. A dataset in the wbfm structure for training
+2. To clone this repository (or copy this project folder from another location)
+3. A dataset in the Neurodata Without Borders file format
+3b. Alternate file format: wbfm folder structure (recommended for now)
 
-Copy the 'barlow_project_template' folder to the desired location, modify the config file as desired, and use the script on the cluster:
+Copy the 'barlow_project_template' folder to the desired location then change the parameters in the config file as desired.
+Next, use the script on the cluster:
 
 ```
 conda activate wbfm
 python barlow_track/scripts/train_barlow_clusterer.py -p /path/to/train_config.yaml
 ```
 
+### Final output
+
 This will produce output in the log/ and checkpoints/ folders, as well as the following in the main folder:
-1. resnet50.pth - the final trained weights
+1. resnet50.pth - the final trained weights (this will be used when tracking)
 2. args.pickle  - the hyperparameters for training; also needed for reading the network
 
 
-## Training multiple networks: hyperparameter search
+## Optional: training multiple networks with hyperparameter search
 
 From the barlow_project_template folder, make a parent folder with the hyperparameter_search_template.yaml file, and modify it to set which parameters to vary.
 Optionally, set alternative defaults by also including a train_config.yaml file (this is required if you want to use wandb).

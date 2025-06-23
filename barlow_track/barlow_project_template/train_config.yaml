@@ -2,8 +2,6 @@
 
 # CHANGEME: these parameters are specific for each model and dataset
 project_path: "/lisc/scratch/neurobiology/zimmer/fieseler/wbfm_projects_future/barlow_tests/ZIM2165_Gcamp7b_worm1-2022_11_28/project_config.yaml"
-dryrun: false
-DEBUG: false
 
 # Optional (but recommended) path to a pretrained model
 # If you want to train from scratch, set this to null
@@ -36,3 +34,7 @@ val_fraction: 0.1
 # Hyperparameters for the new (transposed) BarlowTrack loss
 lambd_obj: 0.67
 train_both_correlations: true
+
+# Debugging parameters
+dryrun: false
+DEBUG: false
