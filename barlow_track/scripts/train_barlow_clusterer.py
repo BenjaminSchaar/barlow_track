@@ -60,7 +60,7 @@ def train_barlow_network(args):
     # Actually train
     start_time = time.time()
     log_dir = os.path.join(args.project_dir, 'log')
-    stats_file = get_sequential_filename(log_dir, 'stats.json')
+    stats_file = get_sequential_filename(os.path.join(log_dir, 'stats.json'))
     checkpoint_file = get_sequential_filename(os.path.join(args.project_dir, 'checkpoints', 'checkpoint.pth'))
     print(f"Starting training. Stats in folder: {args.project_dir}")
     if args.dryrun:
