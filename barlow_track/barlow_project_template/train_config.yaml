@@ -5,7 +5,7 @@ project_path: "/lisc/scratch/neurobiology/zimmer/fieseler/wbfm_projects_future/b
 
 # Optional (but recommended) path to a pretrained model
 # If you want to train from scratch, set this to null
-pretrained_model_path: null
+pretrained_model_path: /lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/barlow_ZIM2165_Gcamp7b_worm1-2022_11_28_from_search/trial_13/resnet50.pth  # Directly pass the .pth file of the pretrained model (the model weights)
 
 # Optional (but recommended): if you have a wandb account, you can set the project name and run name here
 wandb_name: null      # Project name
