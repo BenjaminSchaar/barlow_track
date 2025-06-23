@@ -59,7 +59,8 @@ def train_barlow_network(args):
 
     # Actually train
     start_time = time.time()
-    stats_file = get_sequential_filename(os.path.join(args.project_dir, 'log', 'stats.json'))
+    log_dir = os.path.join(args.project_dir, 'log')
+    stats_file = get_sequential_filename(log_dir, 'stats.json')
     checkpoint_file = get_sequential_filename(os.path.join(args.project_dir, 'checkpoints', 'checkpoint.pth'))
     print(f"Starting training. Stats in folder: {args.project_dir}")
     if args.dryrun:
@@ -69,98 +70,102 @@ def train_barlow_network(args):
     wandb_opt = dict(mode="disabled") if args.DEBUG else {}
     json_stats = []
 
-    with wandb.init(project=args.wandb_name, entity="charlesfieseler", **wandb_opt) as run:
-        # These lines are only useful for lightning projects
-        # wandb_logger = WandbLogger()
-        # wandb_logger.watch(model, log='all', log_freq=10)
+    # Initialize wandb run, if the user enables it
+    if args.wandb_name and args.wandb_username:
+        run = wandb.init(project=args.wandb_name, entity=args.wandb_username, **wandb_opt)
+    else:
+        run = wandb.init(anonymous="allow", dir=log_dir, **wandb_opt)
 
-        # Initial json entry: the wandb run name and id
-        json_stats.append(dict(run_name=run.name, run_id=run.id))
+    # Initial json entry: the wandb run name and id
+    json_stats.append(dict(run_name=run.name, run_id=run.id))
 
-        try:
-            for epoch in range(0, args.epochs):
-                for step, (y1, y2) in enumerate(loader, start=epoch * len(loader)):
-                    y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
-
-                    # adjust_learning_rate(args, optimizer, loader, step)
-                    optimizer.zero_grad()
-                    loss, loss_original, loss_transpose = model.forward(y1, y2)
-
-                    loss.backward()
-                    optimizer.step()
-                    optimizer.zero_grad(set_to_none=True)
-
-                    if step % args.print_freq == 0:
-                        if args.rank == 0:
-                            # Just print
-                            stats = dict(epoch=epoch, step=step,
-                                         loss=loss.item(),
-                                         time=int(time.time() - start_time))
-                            print(json.dumps(stats))
-                            with open(stats_file, 'w') as f:
-                                print(json.dumps(stats), file=f)
-
-                            # wandb logging
-                            run.log({"loss": loss.item(),
-                                     "loss_original": loss_original.item(),
-                                     "loss_transpose": loss_transpose.item()})
-
-                            # More infrequently, plot embedding
-                            if step % (10*args.print_freq) == 0:
-                                with torch.no_grad():
-                                    c = model.calculate_correlation_matrix(y1, y2)
-                                    save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
-                                    fig = visualize_model_performance(c, save_fname=save_fname,
-                                                                      vmin=-0.5, vmax=1)
-                                    run.log({"chart": fig})
-
-                if args.rank == 0:
-                    # save checkpoint
-                    state = dict(epoch=epoch + 1, model=model.state_dict(),
-                                 optimizer=optimizer.state_dict())
-                    torch.save(state, checkpoint_file)
-                    # Calculate validation loss
-                    with torch.no_grad():
-                        val_loss, val_loss_original, val_loss_transpose = 0, 0, 0
-                        for val_step, (y1, y2) in enumerate(data_module.val_dataloader()):
-                            y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
-                            loss, loss_original, loss_transpose = model.forward(y1, y2)
-                            val_loss += loss.item()
-                            val_loss_original += loss_original.item()
-                            val_loss_transpose += loss_transpose.item()
-                            # Plot validation embedding
-                            if val_step == 0:
-                                c = model.calculate_correlation_matrix(y1, y2)
-                                fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
-                                run.log({"validation_chart": fig})
-
-                    # wandb logging
-                    run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
-                    # Printing
-                    stats = dict(epoch=epoch, val_loss=val_loss, time=int(time.time() - start_time))
-                    print(json.dumps(stats))
-                    json_stats.append(stats)
-
-            # Calculate the final test loss
-            test_loss, test_loss_original, test_loss_transpose = 0, 0, 0
-            for test_step, (y1, y2) in enumerate(data_module.test_dataloader()):
+    try:
+        for epoch in range(0, args.epochs):
+            for step, (y1, y2) in enumerate(loader, start=epoch * len(loader)):
                 y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
-                loss, loss_original, loss_transpose = model.forward(y1, y2)
-                test_loss += loss.item()
-                test_loss_original += loss_original.item()
-                test_loss_transpose += loss_transpose.item()
-            # wandb logging
-            run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
-            # Printing
-            stats = dict(epoch=epoch, test_loss=test_loss, time=int(time.time() - start_time))
-            print(json.dumps(stats))
-            json_stats.append(stats)
 
-        except KeyboardInterrupt:
-            print("Interrupted training, saving model")
-        except torch.cuda.OutOfMemoryError as e:
-            print("Out of memory error, saving model")
-            print(e)
+                # adjust_learning_rate(args, optimizer, loader, step)
+                optimizer.zero_grad()
+                loss, loss_original, loss_transpose = model.forward(y1, y2)
+
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
+
+                if step % args.print_freq == 0:
+                    if args.rank == 0:
+                        # Just print
+                        stats = dict(epoch=epoch, step=step,
+                                        loss=loss.item(),
+                                        time=int(time.time() - start_time))
+                        print(json.dumps(stats))
+                        with open(stats_file, 'w') as f:
+                            print(json.dumps(stats), file=f)
+
+                        # wandb logging
+                        run.log({"loss": loss.item(),
+                                 "loss_original": loss_original.item(),
+                                 "loss_transpose": loss_transpose.item()})
+
+                        # More infrequently, plot embedding
+                        if step % (10*args.print_freq) == 0:
+                            with torch.no_grad():
+                                c = model.calculate_correlation_matrix(y1, y2)
+                                save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
+                                fig = visualize_model_performance(c, save_fname=save_fname,
+                                                                    vmin=-0.5, vmax=1)
+                                run.log({"chart": fig})
+
+            if args.rank == 0:
+                # save checkpoint
+                state = dict(epoch=epoch + 1, model=model.state_dict(),
+                                optimizer=optimizer.state_dict())
+                torch.save(state, checkpoint_file)
+                # Calculate validation loss
+                with torch.no_grad():
+                    val_loss, val_loss_original, val_loss_transpose = 0, 0, 0
+                    for val_step, (y1, y2) in enumerate(data_module.val_dataloader()):
+                        y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
+                        loss, loss_original, loss_transpose = model.forward(y1, y2)
+                        val_loss += loss.item()
+                        val_loss_original += loss_original.item()
+                        val_loss_transpose += loss_transpose.item()
+                        # Plot validation embedding
+                        if val_step == 0:
+                            c = model.calculate_correlation_matrix(y1, y2)
+                            fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
+                            run.log({"validation_chart": fig})
+
+                # wandb logging
+                run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
+                # Printing
+                stats = dict(epoch=epoch, val_loss=val_loss, time=int(time.time() - start_time))
+                print(json.dumps(stats))
+                json_stats.append(stats)
+
+        # Calculate the final test loss
+        test_loss, test_loss_original, test_loss_transpose = 0, 0, 0
+        for test_step, (y1, y2) in enumerate(data_module.test_dataloader()):
+            y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
+            loss, loss_original, loss_transpose = model.forward(y1, y2)
+            test_loss += loss.item()
+            test_loss_original += loss_original.item()
+            test_loss_transpose += loss_transpose.item()
+        # wandb logging
+        run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
+        # Printing
+        stats = dict(epoch=epoch, test_loss=test_loss, time=int(time.time() - start_time))
+        print(json.dumps(stats))
+        json_stats.append(stats)
+
+    except KeyboardInterrupt:
+        print("Interrupted training, saving model")
+    except torch.cuda.OutOfMemoryError as e:
+        print("Out of memory error, saving model")
+        print(e)
+    finally:
+        # Clean up the wandb run
+        run.finish()
 
     # Final saving
     with open(stats_file, 'w') as f:
