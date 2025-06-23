@@ -17,7 +17,7 @@ barlow_project_template/
 
 To start, you need:
 1. A working conda environment
-2. To clone this repository (or copy this project folder from another location)
+2. To clone this repository
 3. A dataset in the Neurodata Without Borders file format
 3b. Alternate file format: wbfm folder structure (recommended for now)
 
@@ -26,6 +26,7 @@ Next, use the script on the cluster:
 
 ```
 conda activate wbfm
+cd /path/to/this/repo
 python barlow_track/scripts/train_barlow_clusterer.py -p /path/to/train_config.yaml
 ```
 
@@ -35,6 +36,9 @@ This will produce output in the log/ and checkpoints/ folders, as well as the fo
 1. resnet50.pth - the final trained weights (this will be used when tracking)
 2. args.pickle  - the hyperparameters for training; also needed for reading the network
 
+If you are in the zimmer lab, you can add your trained network folder here:
+
+'/lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow'
 
 ## Optional: training multiple networks with hyperparameter search
 
@@ -44,11 +48,12 @@ Then run:
 
 ```
 conda activate wbfm
+cd /path/to/this/repo
 python barlow_track/scripts/optimize_hyperparameters.py -p /path/to/hyperparameter_search_template.yaml
 ```
 
 By default this runs on the cluster, thus you may want to run it in a tmux session.
-The python script will submit batch jobs (up to 100 total), and 
+The python script will submit batch jobs (up to 100 total), and search through parameters to find the best loss.
 
 This will create a series of nested folders in the parent folder, which are all copies of this single-project folder.
 They are named trial_N, with the actually used hyperparameters saved in their individual train_config.yaml files.
