@@ -15,6 +15,11 @@ barlow_project_template/
 
 ## Training a network: basic
 
+To start, you need:
+1. A working conda environment
+2. To clone this code (or to be able to copy this project folder from another location)
+3. A dataset in the wbfm structure for training
+
 Copy the 'barlow_project_template' folder to the desired location, modify the config file as desired, and use the script on the cluster:
 
 ```
