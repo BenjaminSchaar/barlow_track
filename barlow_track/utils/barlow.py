@@ -61,10 +61,10 @@ class BarlowTwins3d(nn.Module):
         else:
             c_features, c_objects = self.calculate_both_correlation_matrices(y1, y2)
             # Original loss
-            loss_original = self.original_barlow_loss(c_features)
+            loss_original = (1-self.args.lambd_obj) * self.original_barlow_loss(c_features)
 
             # New object loss; use same lambd and additional lambd_obj
-            loss_transpose = self.args.lambd_obj*self.original_barlow_loss(c_objects)
+            loss_transpose = self.args.lambd_obj * self.original_barlow_loss(c_objects)
             loss = loss_original + loss_transpose
 
         return loss, loss_original, loss_transpose
