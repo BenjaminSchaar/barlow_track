@@ -22,8 +22,6 @@ from wbfm.utils.general.utils_filenames import get_sequential_filename
 
 
 def train_barlow_network(args):
-    # Set up logger
-    wandb.login()
 
     # Load ground truth
     project_data1 = ProjectData.load_final_project_data_from_config(args.project_path)
@@ -72,12 +70,14 @@ def train_barlow_network(args):
 
     # Initialize wandb run, if the user enables it
     if args.wandb_name and args.wandb_username:
+        wandb.login()
         run = wandb.init(project=args.wandb_name, entity=args.wandb_username, **wandb_opt)
     else:
-        run = wandb.init(anonymous="allow", dir=log_dir, **wandb_opt)
+        run = None
 
     # Initial json entry: the wandb run name and id
-    json_stats.append(dict(run_name=run.name, run_id=run.id))
+    if run is not None:
+        json_stats.append(dict(run_name=run.name, run_id=run.id))
 
     try:
         for epoch in range(0, args.epochs):
@@ -96,16 +96,17 @@ def train_barlow_network(args):
                     if args.rank == 0:
                         # Just print
                         stats = dict(epoch=epoch, step=step,
-                                        loss=loss.item(),
-                                        time=int(time.time() - start_time))
+                                     loss=loss.item(),
+                                     time=int(time.time() - start_time))
                         print(json.dumps(stats))
                         with open(stats_file, 'w') as f:
                             print(json.dumps(stats), file=f)
 
                         # wandb logging
-                        run.log({"loss": loss.item(),
-                                 "loss_original": loss_original.item(),
-                                 "loss_transpose": loss_transpose.item()})
+                        if run is not None:
+                            run.log({"loss": loss.item(),
+                                    "loss_original": loss_original.item(),
+                                    "loss_transpose": loss_transpose.item()})
 
                         # More infrequently, plot embedding
                         if step % (10*args.print_freq) == 0:
@@ -114,7 +115,8 @@ def train_barlow_network(args):
                                 save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
                                 fig = visualize_model_performance(c, save_fname=save_fname,
                                                                     vmin=-0.5, vmax=1)
-                                run.log({"chart": fig})
+                                if run is not None:
+                                    run.log({"chart": fig})
 
             if args.rank == 0:
                 # save checkpoint
@@ -134,10 +136,11 @@ def train_barlow_network(args):
                         if val_step == 0:
                             c = model.calculate_correlation_matrix(y1, y2)
                             fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
-                            run.log({"validation_chart": fig})
+                            if run is not None:
+                                run.log({"validation_chart": fig})
 
-                # wandb logging
-                run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
+                if run is not None:
+                    run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
                 # Printing
                 stats = dict(epoch=epoch, val_loss=val_loss, time=int(time.time() - start_time))
                 print(json.dumps(stats))
@@ -151,8 +154,8 @@ def train_barlow_network(args):
             test_loss += loss.item()
             test_loss_original += loss_original.item()
             test_loss_transpose += loss_transpose.item()
-        # wandb logging
-        run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
+        if run is not None:
+            run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
         # Printing
         stats = dict(epoch=epoch, test_loss=test_loss, time=int(time.time() - start_time))
         print(json.dumps(stats))
@@ -165,7 +168,8 @@ def train_barlow_network(args):
         print(e)
     finally:
         # Clean up the wandb run
-        run.finish()
+        if run is not None:
+            run.finish()
 
     # Final saving
     with open(stats_file, 'w') as f:
