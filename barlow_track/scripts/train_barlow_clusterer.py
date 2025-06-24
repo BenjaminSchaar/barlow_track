@@ -78,6 +78,8 @@ def train_barlow_network(args):
     # Initial json entry: the wandb run name and id
     if run is not None:
         json_stats.append(dict(run_name=run.name, run_id=run.id))
+    else:
+        json_stats.append(dict(run_name="Non-wandb-run", run_id=None))
 
     try:
         for epoch in range(0, args.epochs):
