@@ -92,15 +92,13 @@ def train_barlow_network(args):
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
 
-                if step % args.print_freq == 0:
+                if step % args.print_freq == 0 or step == 0:
                     if args.rank == 0:
                         # Just print
                         stats = dict(epoch=epoch, step=step,
                                      loss=loss.item(),
                                      time=int(time.time() - start_time))
                         print(json.dumps(stats))
-                        with open(stats_file, 'w') as f:
-                            print(json.dumps(stats), file=f)
 
                         # wandb logging
                         if run is not None:
@@ -135,6 +133,7 @@ def train_barlow_network(args):
                         # Plot validation embedding
                         if val_step == 0:
                             c = model.calculate_correlation_matrix(y1, y2)
+                            save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}-val.png')
                             fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
                             if run is not None:
                                 run.log({"validation_chart": fig})
@@ -171,22 +170,23 @@ def train_barlow_network(args):
         if run is not None:
             run.finish()
 
-    # Final saving
-    with open(stats_file, 'w') as f:
-        print(json.dumps(json_stats), file=f)
+        # Final saving
+        with open(stats_file, 'w') as f:
+            print(json.dumps(json_stats), file=f)
 
-    if args.rank == 0:
-        # save final model (not in checkpoint dir)
-        fname = get_sequential_filename(args.project_dir + '/resnet50.pth')
-        torch.save(model.state_dict(), fname)
-        args.model_fname = fname
+        if args.rank == 0:
+            # save final model (not in checkpoint dir)
+            fname = get_sequential_filename(args.project_dir + '/resnet50.pth')
+            torch.save(model.state_dict(), fname)
+            args.model_fname = fname
 
-    # Also save the args namespace
-    fname = get_sequential_filename(args.project_dir + '/args.pickle')
-    with open(fname, 'wb') as f:
-        pickle.dump(args, f)
+        # Also save the args namespace
+        fname = get_sequential_filename(args.project_dir + '/args.pickle')
+        with open(fname, 'wb') as f:
+            pickle.dump(args, f)
 
-    print("Training complete")
+        print("Training complete")
+        
     # Package losses into a dictionary and return
     test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
     return test_losses
