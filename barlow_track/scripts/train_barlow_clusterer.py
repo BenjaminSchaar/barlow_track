@@ -98,7 +98,7 @@ def train_barlow_network(args):
                     if args.rank == 0:
                         # Just print
                         stats = dict(epoch=epoch, step=step,
-                                     loss=loss.item(),
+                                     loss=loss.item(), loss_original=loss_original.item(), loss_transpose=loss_transpose.item(),
                                      time=int(time.time() - start_time))
                         print(json.dumps(stats))
 
