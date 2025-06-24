@@ -22,7 +22,20 @@ To start, you need:
 3b. Alternate file format: wbfm folder structure (recommended for now)
 
 Copy the 'barlow_project_template' folder to the desired location then change the parameters in the config file as desired.
-Next, use the script on the cluster:
+Next, you have two options: running it locally (you need a powerful computer) or on the cluster.
+
+### Training on a cluster
+
+```
+conda activate wbfm
+cd /path/to/this/repo
+python barlow_track/scripts/sbatch_train_barlow_clusterer.sbatch -p /path/to/train_config.yaml
+```
+
+Important note: this will use a centrally located script to run the actual training (the .py file in the next section).
+This means that if you need an update or otherwise the code is not working, the person maintaining that central code must update it.
+
+### Training locally
 
 ```
 conda activate wbfm

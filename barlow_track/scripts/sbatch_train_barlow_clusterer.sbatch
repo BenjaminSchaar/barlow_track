@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
 #SBATCH --job-name=barlow_training
-#SBATCH --nodes=1                   # Use one node
 #SBATCH --time=1-00:00:00
 #SBATCH --mem=256G
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
-#SBATCH --partition=gpu,basic
 
 pwd; hostname; date
 
