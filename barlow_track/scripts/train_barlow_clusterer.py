@@ -45,10 +45,13 @@ def train_barlow_network(args):
         pretrained_model_path = None
     if pretrained_model_path is not None:
         logging.info(f"Loading model from {pretrained_model_path}")
-        gpu, model, new_args = load_barlow_model(pretrained_model_path)
-        logging.info(f"Loaded new args: {new_args}")
+        gpu, model, pretrained_args = load_barlow_model(pretrained_model_path)
+        logging.info(f"Loaded pretrained args: {pretrained_args}")
         # Replace network-related values of args
-        args.embedding_dim = new_args.embedding_dim
+        args.embedding_dim = pretrained_args.embedding_dim
+        # Update hyperparameters with the user-passed new args
+        for k, v in vars(args).items():
+            setattr(model.args, k, v)
     else:
         backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
         model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
