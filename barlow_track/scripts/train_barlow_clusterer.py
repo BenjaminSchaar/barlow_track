@@ -60,7 +60,7 @@ def train_barlow_network(args):
     log_dir = os.path.join(args.project_dir, 'log')
     stats_file = get_sequential_filename(os.path.join(log_dir, 'stats.json'))
     checkpoint_file = get_sequential_filename(os.path.join(args.project_dir, 'checkpoints', 'checkpoint.pth'))
-    print(f"Starting training. Stats in folder: {args.project_dir}")
+    print(f"Starting training with args: {args}. Stats in folder: {args.project_dir}")
     if args.dryrun:
         print("Dryrun, therefore stopping before actual training")
         return
@@ -101,6 +101,7 @@ def train_barlow_network(args):
                                      loss=loss.item(), loss_original=loss_original.item(), loss_transpose=loss_transpose.item(),
                                      time=int(time.time() - start_time))
                         print(json.dumps(stats))
+                        json_stats.append(stats)
 
                         # wandb logging
                         if run is not None:
