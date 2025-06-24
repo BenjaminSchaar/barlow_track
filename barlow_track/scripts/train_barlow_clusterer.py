@@ -70,6 +70,7 @@ def train_barlow_network(args):
 
     wandb_opt = dict(mode="disabled") if args.DEBUG else {}
     json_stats = []
+    test_losses = dict(test_loss=0, test_loss_original=0, test_loss_transpose=0)
 
     # Initialize wandb run, if the user enables it
     if args.wandb_name and args.wandb_username:
@@ -159,6 +160,9 @@ def train_barlow_network(args):
             test_loss += loss.item()
             test_loss_original += loss_original.item()
             test_loss_transpose += loss_transpose.item()
+        # Package losses into a dictionary for return
+        test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
+
         if run is not None:
             run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
         # Printing
@@ -193,8 +197,6 @@ def train_barlow_network(args):
 
         print("Training complete")
         
-    # Package losses into a dictionary and return
-    test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
     return test_losses
 
 
