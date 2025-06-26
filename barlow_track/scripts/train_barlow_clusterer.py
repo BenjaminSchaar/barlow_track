@@ -138,11 +138,9 @@ def train_barlow_network(args):
                         val_loss_original += loss_original.item()
                         val_loss_transpose += loss_transpose.item()
                         # Plot validation embedding
-                        if val_step == 0:
-                            c = model.calculate_correlation_matrix(y1, y2)
-                            save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}-val.png')
-                            fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
-                            if run is not None:
+                        if val_step == 0 and run is not None:
+                                c = model.calculate_correlation_matrix(y1, y2)
+                                fig = visualize_model_performance(c, save_fname=None, vmin=-0.5, vmax=1)
                                 run.log({"validation_chart": fig})
 
                 if run is not None:
