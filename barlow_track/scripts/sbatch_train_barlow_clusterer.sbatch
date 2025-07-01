@@ -9,7 +9,7 @@
 pwd; hostname; date
 
 # Get all user flags
-while getopts p:t:n:s: flag
+while getopts p:n: flag
 do
     case "${flag}" in
         p) network_args_path=${OPTARG};;
