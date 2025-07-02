@@ -50,12 +50,13 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     results_subfolder
     tracking_mode - Which tracking mode. Options: 'global', 'overlapping_windows', 'streaming'
     to_plot_relative_accuracy
+    project_kwargs - Additional keyword arguments to pass to the ProjectData constructor
 
     Returns
     -------
 
     """
-    project_data = ProjectData.load_final_project_data(project_config, **project_kwargs)
+    project_data = ProjectData.load_final_project_data_from_config(project_config, **project_kwargs)
     project_config = project_data.project_config
 
     if model_fname is None:
