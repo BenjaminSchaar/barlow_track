@@ -271,7 +271,7 @@ class NeuronImageWithGTDataset(Dataset):
     def __init__(self, project_data, num_frames, target_sz, include_untracked=False):
         # In order to synchronize the normalization used
         self._transform = Transform()
-        self.num_frames = num_frames
+        self.num_frames = int(num_frames)
         self.project_data = project_data
         self.target_sz = target_sz
         self.which_neurons = project_data.get_list_of_finished_neurons()[1]
