@@ -192,6 +192,16 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
     project_data.project_config.logger.info("Embedding using Barlow model")
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+        logging.info(f"Using dataset: {dataset}")
+        logging.info(f"type(dataset): {type(dataset)}")
+        logging.info(f"hasattr(dataset, '__len__'): {hasattr(dataset, '__len__')}")
+        logging.info(f"type(dataset.num_frames): {type(dataset.num_frames)}")
+        logging.info(f"dataset.num_frames: {dataset.num_frames}")
+        try:
+            logging.info(f"len(dataset): {len(dataset)}")
+        except Exception as e:
+            logging.error(f"len(dataset) failed: {e}")
+
         for t, (batch, ids) in tqdm(enumerate(dataset), total=len(dataset)):
             # Move entire batch to gpu initially
             batch = batch.to(gpu)
