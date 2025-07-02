@@ -56,6 +56,9 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     # Get a bbox for all neurons in 3d, but optionally skip the untracked mask indices
     all_dat_dict = {}
     this_red = project_data.red_data[t, ...]
+    # Check for dask arrays
+    if hasattr(this_red, 'compute'):
+        this_red = this_red.compute()
     sz = project_data.red_data.shape
 
     # Use the metadata as calculated in the project
