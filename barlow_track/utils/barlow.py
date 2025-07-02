@@ -313,6 +313,10 @@ class NeuronImageWithGTDataset(Dataset):
                                                                              target_sz=self.target_sz,
                                                                              include_untracked=self.include_untracked)
         return self._fix_empty_volume(neurons_in_single_volume, self.target_sz)
+    
+    def __repr__(self):
+        return f"NeuronImageWithGTDataset(num_frames={self.num_frames}, target_sz={self.target_sz}, " \
+               f"include_untracked={self.include_untracked})"
 
 
 def adjust_learning_rate(args, optimizer, loader, step):
