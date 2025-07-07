@@ -417,6 +417,11 @@ class WormTsneTracker:
         # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
         db_opt['min_cluster_size'] = int(0.5 * self.num_frames)
         db_opt['min_samples']      = int(0.02 * self.num_frames)
+        # Make sure min_samples and min_cluster_size are not too large are greater than 0
+        if db_opt['min_samples'] < 1:
+            db_opt['min_samples'] = 1
+        if db_opt['min_cluster_size'] < 1:
+            db_opt['min_cluster_size'] = 1
         # db_opt['max_cluster_size'] = int(1.1 * self.num_frames)  # Doesn't work
         db_opt['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
         logging.info("Clustering...")
