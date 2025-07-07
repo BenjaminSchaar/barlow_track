@@ -45,10 +45,10 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 
     Parameters
     ----------
-    project_config
+    project_config - the project configuration object, which contains the project root and other settings
     model_fname - the exact name of the model file, or the full path to the model file
         Example: /scratch/neurobiology/zimmer/wbfm/TrainedBarlow/hyperparameter_search/trial_0/resnet50-1.pth
-    results_subfolder
+    results_subfolder - the subfolder to save the results in, relative to the project root
     tracking_mode - Which tracking mode. Options: 'global', 'overlapping_windows', 'streaming'
     to_plot_relative_accuracy
     project_kwargs - Additional keyword arguments to pass to the ProjectData constructor
