@@ -18,7 +18,7 @@ do
     esac
 done
 
-BASE_CODE_PATH="/lisc/scratch/neurobiology/wbfm/code/barlow_track"
+BASE_CODE_PATH="/lisc/scratch/neurobiology/zimmer/wbfm/code/barlow_track"
 CMD=${BASE_CODE_PATH}/barlow_track/scripts/train_barlow_clusterer.py
 
 echo "Running training on network yaml file: $network_args_path"
