@@ -351,9 +351,10 @@ def load_barlow_model(model_fname):
     """
     from barlow_track.utils.siamese import ResidualEncoder3D
     state_dict = torch.load(model_fname)
+    if state_dict.get('model', None) is not None:
+        # Then this was a saved checkpoint, and we should load just the model
+        state_dict = state_dict['model']
     gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # Don't use gpu when tracking (bandwidth is the bottleneck?)
-    # gpu = "cpu"
     logging.info(f"Using device: {gpu}")
     # Check if there are multiple .pickle files in the same folder, and give a warning if so
     for fname in Path(model_fname).parent.glob('*.pickle'):
