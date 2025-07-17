@@ -12,22 +12,31 @@ wandb_name: null      # Project name
 wandb_username: null  # Account name
 
 # Hyperparameters for training the model; do not change these unless you know what you're doing
+
+# Architecture
 projector: '2048-2048-256'
 embedding_dim: 2048
-lambd: 0.0051
-batch_size: 1
-weight_decay: 1e-6
-epochs: 50
-print_freq: 100
-rank: 0
-lr: 0.0001
-learning_rate_weights: 0.2
-learning_rate_biases: 0.0048
+
+backbone_kwargs:
+  num_levels: 2
+  f_maps: 4  # Default in paper is 64... is this super small?
+
+# Size of image crop (around each neuron) to use
 target_sz:
   - 4
   - 128
   - 128
 num_frames: 200
+
+# Optimization hyperparameters
+lambd: 0.0051
+batch_size: 1
+weight_decay: 1e-6
+epochs: 50
+lr: 0.0001
+learning_rate_weights: 0.2
+learning_rate_biases: 0.0048
+
 train_fraction: 0.8
 val_fraction: 0.1
 
@@ -35,6 +44,8 @@ val_fraction: 0.1
 lambd_obj: 0.67
 train_both_correlations: true
 
-# Debugging parameters
+# Debugging and logging parameters
+print_freq: 100
+rank: 0
 dryrun: false
 DEBUG: false
