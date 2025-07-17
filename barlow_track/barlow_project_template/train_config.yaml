@@ -3,7 +3,7 @@
 # CHANGEME: these parameters are specific for each model and dataset
 project_path: "/lisc/scratch/neurobiology/zimmer/fieseler/wbfm_projects_future/barlow_tests/ZIM2165_Gcamp7b_worm1-2022_11_28/project_config.yaml"
 
-# Optional (but recommended) path to a pretrained model
+# Optional (but recommended) path to a pretrained model; note that the architecture parameters must be the same for this to work
 # If you want to train from scratch, set this to null
 pretrained_model_path: /lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/barlow_ZIM2165_Gcamp7b_worm1-2022_11_28_from_search/trial_13/resnet50.pth  # Directly pass the .pth file of the pretrained model (the model weights)
 
@@ -11,11 +11,13 @@ pretrained_model_path: /lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/barl
 wandb_name: null      # Project name
 wandb_username: null  # Account name
 
-# Hyperparameters for training the model; do not change these unless you know what you're doing
+####
+# Hyperparameters for training the model
+####
 
 # Architecture
-projector: '2048-2048-256'
-embedding_dim: 2048
+projector: '2048-2048-256'  # Original paper argued that larger final size is better
+embedding_dim: 2048  # Projector also gets an additional first layer of size 'embedding_dim'
 
 backbone_kwargs:
   num_levels: 2
@@ -26,7 +28,6 @@ target_sz:
   - 4
   - 128
   - 128
-num_frames: 200
 
 # Optimization hyperparameters
 lambd: 0.0051
@@ -37,12 +38,12 @@ lr: 0.0001
 learning_rate_weights: 0.2
 learning_rate_biases: 0.0048
 
+num_frames: 200
 train_fraction: 0.8
 val_fraction: 0.1
 
 # Hyperparameters for the new (transposed) BarlowTrack loss
-lambd_obj: 0.67
-train_both_correlations: true
+lambd_obj: 0.67  # Set to 0 to not use the transposed loss
 
 # Debugging and logging parameters
 print_freq: 100
