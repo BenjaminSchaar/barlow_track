@@ -54,7 +54,10 @@ def train_barlow_network(args):
         for k, v in vars(args).items():
             setattr(model.args, k, v)
     else:
-        user_args = vars(vars(args).get('backbone_kwargs', dict()))
+        try:
+            user_args = vars(vars(args).get('backbone_kwargs', dict()))
+        except TypeError:
+            user_args = dict()
         backbone_kwargs = dict(in_channels=1, num_levels=user_args.get('num_levels', 2), f_maps=user_args.get('f_maps', 4), crop_sz=target_sz)
         model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
 
