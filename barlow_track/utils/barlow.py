@@ -157,38 +157,28 @@ class LARS(optim.Optimizer):
 
 
 class Transform:
-    def __init__(self):
+    def __init__(self, args=None):
+        if args is None:
+            args = dict()
+
+        # This normalization should get rid of the noise floor (~100) and keep the actual peak values
         self.final_normalization = tio.RescaleIntensity(percentiles=(5, 100))
         self.final_normalization_no_copy = tio.RescaleIntensity(percentiles=(5, 100), copy=False)
 
         self.transform = tio.transforms.Compose([
-            # tio.RandomFlip(axes=(1, 2), p=0.1),  # Do not flip z
-            tio.RandomBlur(p=0.1),
-            tio.RandomAffine(degrees=(180, 0, 0), p=1.0),  # Also allows scaling
-            # tio.RandomMotion(translation=1, degrees=90, p=1.0),
-            # tio.RandomElasticDeformation(max_displacement=(1, 5, 5), p=0.5),
-            tio.RandomNoise(p=0.5),
-            # tio.ZNormalization()
             self.final_normalization
-            # transforms.ToTensor(),
-            # transforms.Normalize(mean=[0, 0.485, 0.456, 0.406],
-            #                      std=[1, 0.229, 0.224, 0.225])
         ])
         self.transform_prime = transforms.Compose([
-            # tio.RandomFlip(axes=(1, 2), p=0.1),  # Do not flip z
-            # tio.RandomBlur(p=0.0),
-            tio.RandomAffine(degrees=(180, 0, 0), p=0.1),  # Also allows scaling
-            # tio.RandomElasticDeformation(max_displacement=(1, 5, 5), p=0.1),
-            tio.RandomNoise(p=0.1),
+            tio.RandomFlip(axes=(1, 2), p=args.get('p_RandomFlip', 0.0)),  # Do not flip z
+            tio.RandomBlur(p=args.get('p_RandomBlur', 0.25)),
+            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 1.0)),  # Also allows scaling
+            tio.RandomElasticDeformation(max_displacement=args.get('zxy_RandomElasticDeformation', (1, 5, 5)), p=args.get('p_RandomElasticDeformation', 0.0)),
+            tio.RandomNoise(std=args.get('std_RandomNoise', 0.25), p=args.get('p_RandomNoise', 0.1)),
             # tio.ZNormalization()
             self.final_normalization
-            # transforms.ToTensor(),
-            # transforms.Normalize(mean=[0, 0.485, 0.456, 0.406],
-            #                      std=[1, 0.229, 0.224, 0.225])
         ])
 
     def __call__(self, x):
-        # print(x.shape)
         y1 = self.transform(x)
         y2 = self.transform_prime(x)
         return y1, y2

@@ -29,6 +29,15 @@ target_sz:
   - 128
   - 128
 
+# Augmentation hyperparameters
+p_RandomFlip: 0
+p_RandomBlur: 0.25
+p_RandomAffine: 1.0  # At least one deformation should have probability 1, so that the two images are definitely different
+p_RandomElasticDeformation: 0.0
+zxy_RandomElasticDeformation: [1, 5, 5]
+p_RandomNoise: 0.1
+std_RandomNoise: 0.25
+
 # Optimization hyperparameters
 lambd: 0.0051
 batch_size: 1
