@@ -160,6 +160,8 @@ class Transform:
     def __init__(self, args=None):
         if args is None:
             args = dict()
+        else:
+            args = vars(args)  # Convert from simplenamespace
 
         # This normalization should get rid of the noise floor (~100) and keep the actual peak values
         self.final_normalization = tio.RescaleIntensity(percentiles=(5, 100))
