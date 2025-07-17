@@ -36,7 +36,8 @@ def train_barlow_network(args):
     loader = data_module.train_dataloader()
 
     torch.manual_seed(43)
-    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    cuda_index = os.getenv("CUDA_VISIBLE_DEVICES", 0)
+    gpu = torch.device(f"cuda:{cuda_index}" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {gpu}")
     # Initialize model, loading from checkpoint if passed
     try:
