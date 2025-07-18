@@ -24,12 +24,14 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     sz = project_data.red_data.shape
 
     for i, neuron in enumerate(neurons):
-        bbox = _get_bbox(i, neuron)
-        # Expand to get the neighborhood
+        bbox_or_centroid = _get_bbox(i, neuron)
+        if np.isnan(bbox_or_centroid[0]):
+            continue
 
-        dat, _ = get_3d_crop_using_bbox_or_centroid(bbox, sz, target_sz, this_red)
+        # Expand to get the neighborhood
+        dat, _ = get_3d_crop_using_bbox_or_centroid(bbox_or_centroid, sz, target_sz, this_red)
         all_dat.append(dat)  # TODO: preallocate
-        all_bbox.append(bbox)
+        all_bbox.append(bbox_or_centroid)
 
     return all_dat, all_bbox
 
