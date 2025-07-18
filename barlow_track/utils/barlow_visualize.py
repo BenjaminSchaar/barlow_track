@@ -2,6 +2,7 @@ import logging
 import os
 
 import matplotlib
+matplotlib.use("Agg")  # For headless opencv
 import numpy as np
 from matplotlib import pyplot as plt, patheffects as PathEffects
 from matplotlib.colors import TwoSlopeNorm
