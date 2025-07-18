@@ -36,7 +36,8 @@ def train_barlow_network(args):
     loader = data_module.train_dataloader()
 
     torch.manual_seed(43)
-    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    cuda_index = os.getenv("CUDA_VISIBLE_DEVICES", 0)
+    gpu = torch.device(f"cuda:{cuda_index}" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {gpu}")
     # Initialize model, loading from checkpoint if passed
     try:
@@ -53,7 +54,11 @@ def train_barlow_network(args):
         for k, v in vars(args).items():
             setattr(model.args, k, v)
     else:
-        backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
+        try:
+            user_args = vars(vars(args).get('backbone_kwargs', dict()))
+        except TypeError:
+            user_args = dict()
+        backbone_kwargs = dict(in_channels=1, num_levels=user_args.get('num_levels', 2), f_maps=user_args.get('f_maps', 4), crop_sz=target_sz)
         model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)

@@ -29,7 +29,3 @@ hyperparameters:
   #   bounds: [0.0, 1.0]
   #   # Optimizing this affects the absolute value of the loss function
 
-  # - name: train_both_correlations
-  #   type: choice
-  #   values: [true, false]
-  #   value_type: bool

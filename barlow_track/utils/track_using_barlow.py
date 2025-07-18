@@ -28,6 +28,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
                                    tracking_mode='global',
+                                   use_projection_space=True,
                                    to_plot_relative_accuracy=False,
                                    DEBUG=False,
                                    **project_kwargs):
@@ -39,9 +40,9 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     2. Embed the data (volumetric images) using the neural network
     3. Build a class to organize the embeddings and the clusterer
     4. Run the clusterer and get the final tracks
-    5. Calculate accuracy and save the results
+    5. Calculate accuracy (if ground truth is available) and save the results
 
-    Note that this uses the WormTsneTracker class to do the full windowed clustering and tracking
+    Note that this uses the WormTsneTracker class to do the clustering (i.e. tracking)
 
     Parameters
     ----------
@@ -51,6 +52,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     results_subfolder - the subfolder to save the results in, relative to the project root
     tracking_mode - Which tracking mode. Options: 'global', 'overlapping_windows', 'streaming'
     to_plot_relative_accuracy
+    use_projection_space - Whether to discard the projection head when tracking
     project_kwargs - Additional keyword arguments to pass to the ProjectData constructor
 
     Returns
@@ -117,7 +119,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         model.eval()
 
         # Embed using the model
-        all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz)
+        all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space)
 
         linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
@@ -182,7 +184,12 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         plot_relative_accuracy(df_combined, project_data, results_subfolder_full)
 
 
-def embed_using_barlow(gpu, model, project_data, target_sz):
+def embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space):
+    """
+    Use a trained model to project a dataset into the latent space
+
+    use_projection_space - if True, uses the post-projection head space; most SSL approaches discard the projector (i.e. set this to False)
+    """
     from barlow_track.utils.barlow import NeuronImageWithGTDataset
     num_frames = project_data.num_frames - 1  # Why am I subtracting 1?
     dataset = NeuronImageWithGTDataset(project_data, num_frames, target_sz, include_untracked=True)
@@ -200,7 +207,8 @@ def embed_using_barlow(gpu, model, project_data, target_sz):
             def _parallel_func(name):
                 idx = ids.index(name)
                 crop = torch.unsqueeze(batch[:, idx, ...], 0)
-                all_embeddings[name][t] = model.embed(crop).cpu().detach().numpy()
+                embeddings = model.embed(crop) if use_projection_space else model.backbone(crop)
+                all_embeddings[name][t] = embeddings.cpu().detach().numpy()
 
             # no_grad is thread-local
             # https://github.com/pytorch/pytorch/issues/20528
