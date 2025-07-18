@@ -119,7 +119,7 @@ def train_barlow_network(args):
                                     "loss_transpose": loss_transpose.item()})
 
                         # More infrequently, plot embedding
-                        if step % (10*args.print_freq) == 0:
+                        if step % (100*args.print_freq) == 0:
                             with torch.no_grad():
                                 c = model.calculate_correlation_matrix(y1, y2)
                                 save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
