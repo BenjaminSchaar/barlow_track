@@ -24,7 +24,7 @@ from wbfm.utils.general.utils_filenames import get_sequential_filename
 def train_barlow_network(args):
 
     # Load ground truth
-    project_data1 = ProjectData.load_final_project_data_from_config(args.project_path)
+    project_data1 = ProjectData.load_final_project_data(args.project_path, allow_hybrid_loading=True)
 
     print("Preparing cropped volumes...")
     target_sz = np.array(args.target_sz)
