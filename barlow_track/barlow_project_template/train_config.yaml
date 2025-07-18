@@ -24,10 +24,8 @@ backbone_kwargs:
   f_maps: 4  # Default in paper is 64... is this super small?
 
 # Size of image crop (around each neuron) to use
-target_sz:
-  - 4
-  - 128
-  - 128
+target_sz_z: 4
+target_sz_xy: 128
 
 # Augmentation hyperparameters
 p_RandomFlip: 0

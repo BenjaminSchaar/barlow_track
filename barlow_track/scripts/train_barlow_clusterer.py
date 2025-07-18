@@ -27,7 +27,7 @@ def train_barlow_network(args):
     project_data1 = ProjectData.load_final_project_data(args.project_path, allow_hybrid_loading=True)
 
     print("Preparing cropped volumes...")
-    target_sz = np.array(args.target_sz)
+    target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
     data_module = NeuronCropImageDataModule(project_data=project_data1, num_frames=args.num_frames, batch_size=1,
                                             train_fraction=args.train_fraction,
                                             val_fraction=args.val_fraction,

@@ -355,7 +355,10 @@ def load_barlow_model(model_fname):
     args_fname = Path(model_fname).with_name('args.pickle')
     args = pickle_load_binary(args_fname)
     logging.info(f"Loaded args from {args_fname}: {args}")
-    target_sz = np.array(args.target_sz)
+    try:
+        target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
+    except KeyError:
+        target_sz = np.array(args.target_sz)
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
     model.load_state_dict(state_dict)

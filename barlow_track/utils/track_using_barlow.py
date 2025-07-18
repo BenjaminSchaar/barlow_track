@@ -115,7 +115,10 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
 
         gpu, model, args = load_barlow_model(fname)
-        target_sz = args.target_sz
+        try:
+            target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
+        except KeyError:
+            target_sz = np.array(args.target_sz)
         model.eval()
 
         # Embed using the model
