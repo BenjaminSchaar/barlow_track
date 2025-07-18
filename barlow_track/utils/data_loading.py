@@ -1,6 +1,4 @@
 import logging
-
-from networkx import project
 import pandas as pd
 import numpy as np
 from skimage.measure import regionprops
