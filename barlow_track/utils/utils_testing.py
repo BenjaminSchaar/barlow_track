@@ -166,6 +166,9 @@ def test_adjacent_time_point_tracking(project_data, model, neurons_that_are_fini
 
 
 def test_open_set_tracking_from_dataframe(df_tracker, df_gt, neurons_that_are_finished, verbose=0):
+    """
+    
+    """
     # NOTE: the neuron names as used in the tracker may not match the names as used in the database
     df_new = df_tracker
     correct_per_class = defaultdict(int)
