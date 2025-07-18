@@ -19,6 +19,18 @@ hyperparameters:
     log_scale: true
     value_type: int
 
+  - name: target_sz_z
+    type: range
+    bounds: [2, 8]
+    value_type: int
+
+  - name: target_sz_xy
+    type: range
+    bounds: [32, 256]
+    log_scale: true
+    value_type: int
+
+
 #  - name: epochs
 #    type: range
 #    bounds: [ 10, 100 ]

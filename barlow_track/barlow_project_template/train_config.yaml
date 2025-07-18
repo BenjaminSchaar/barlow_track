@@ -16,8 +16,9 @@ wandb_username: null  # Account name
 ####
 
 # Architecture
-projector: '2048-2048-256'  # Original paper argued that larger final size is better
-embedding_dim: 2048  # Projector also gets an additional first layer of size 'embedding_dim'
+projector: '2048-2048'  # Original paper argued that larger final size is better
+projector_final: 2048
+embedding_dim: 128  # Projector also gets an additional first layer of size 'embedding_dim'
 
 backbone_kwargs:
   num_levels: 2
