@@ -145,9 +145,9 @@ def get_3d_crop_using_bbox_or_centroid(zxyzxy, sz, target_sz, this_red):
 
     """
     if len(zxyzxy) == 3:
-        z_mean = zxyzxy[0]
-        x_mean = zxyzxy[1]
-        y_mean = zxyzxy[2]
+        z_mean = int(np.round(zxyzxy[0]))
+        x_mean = int(np.round(zxyzxy[1]))
+        y_mean = int(np.round(zxyzxy[2]))
     elif len(zxyzxy) == 6:
         zxyzxy 
         z_mean = int((zxyzxy[0] + zxyzxy[3]) / 2)
