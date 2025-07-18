@@ -16,7 +16,7 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
         neurons = df_tracks.columns.get_level_values(0).unique()
     else:
         props = regionprops(this_seg[t, ...])
-        neurons = np.arange(props)
+        neurons = np.arange(len(props))
         _get_bbox = lambda i, neuron: props[i].bbox
 
     all_dat, all_bbox = [], []
