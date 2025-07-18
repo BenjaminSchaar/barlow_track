@@ -43,7 +43,7 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         baseline_params['print_freq'] = 10
     else:
         experiment_parent_folder = Path(hyperparameter_path).parent
-        if run_locally:
+        if run_locally and baseline_params['wandb_name'] is None:
             baseline_params['wandb_name'] = 'barlow-hyperparameter-search-local'
 
     def evaluate(parameters):
