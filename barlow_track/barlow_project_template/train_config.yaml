@@ -40,7 +40,7 @@ std_RandomNoise: 0.25
 
 # Optimization hyperparameters
 lambd: 0.0051
-batch_size: 1
+batch_size: 1  # This should stay; one volume = one batch
 weight_decay: 1e-6
 epochs: 50
 lr: 0.0001
