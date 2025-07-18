@@ -357,7 +357,7 @@ def load_barlow_model(model_fname):
     logging.info(f"Loaded args from {args_fname}: {args}")
     try:
         target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
-    except KeyError:
+    except AttributeError:
         target_sz = np.array(args.target_sz)
     backbone_kwargs = dict(in_channels=1, num_levels=2, f_maps=4, crop_sz=target_sz)
     model = BarlowTwins3d(args, backbone=ResidualEncoder3D, **backbone_kwargs).to(gpu)
