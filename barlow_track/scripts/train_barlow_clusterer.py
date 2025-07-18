@@ -80,7 +80,8 @@ def train_barlow_network(args):
     # Initialize wandb run, if the user enables it
     if args.wandb_name and args.wandb_username:
         wandb.login()
-        run = wandb.init(project=args.wandb_name, entity=args.wandb_username, **wandb_opt)
+        run = wandb.init(project=args.wandb_name, entity=args.wandb_username, config=args, **wandb_opt)
+        wandb.config.update(args)  # TODO
     else:
         run = None
 
