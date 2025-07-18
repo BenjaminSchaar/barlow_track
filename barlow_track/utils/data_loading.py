@@ -1,5 +1,6 @@
 import logging
 
+from networkx import project
 import pandas as pd
 import numpy as np
 from skimage.measure import regionprops
@@ -9,15 +10,23 @@ from wbfm.utils.external.utils_pandas import cast_int_or_nan
 def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     """List of 3d crops for all labeled (segmented) objects at time = t"""
     # Get a bbox for all neurons in 3d
-    this_seg = project_data.raw_segmentation[t, ...]
-    props = regionprops(this_seg)
+    this_seg = project_data.raw_segmentation
+    if this_seg is None:
+        # Then we try to use the centroids directly
+        df_tracks = project_data.intermediate_global_tracks
+        _get_bbox = lambda i, neuron: df_tracks.loc[t, (neuron, ['z', 'x', 'y'])]
+        neurons = df_tracks.columns.get_level_values(0).unique()
+    else:
+        props = regionprops(this_seg[t, ...])
+        neurons = np.arange(props)
+        _get_bbox = lambda i, neuron: props[i].bbox
 
     all_dat, all_bbox = [], []
     this_red = np.array(project_data.red_data[t, ...])
     sz = project_data.red_data.shape
 
-    for p in props:
-        bbox = p.bbox
+    for i, neuron in enumerate(neurons):
+        bbox = _get_bbox(i, neuron)
         # Expand to get the neighborhood
 
         dat, _ = get_3d_crop_using_bbox_or_centroid(bbox, sz, target_sz, this_red)
@@ -124,8 +133,7 @@ def get_bbox_data_for_volume_lazy(project_data, t, target_sz=np.array([8, 64, 64
 
 def get_3d_crop_using_bbox_or_centroid(zxyzxy, sz, target_sz, this_red):
     """
-    A real bbox does not need to be passed. Alternative is just the centroid in this 6-value format:
-        zxyzxy
+    A real bbox does not need to be passed. Alternative is just the centroid in zxy format
 
     Parameters
     ----------
@@ -138,17 +146,26 @@ def get_3d_crop_using_bbox_or_centroid(zxyzxy, sz, target_sz, this_red):
     -------
 
     """
-    z_mean = int((zxyzxy[0] + zxyzxy[3]) / 2)
+    if len(zxyzxy) == 3:
+        z_mean = zxyzxy[0]
+        x_mean = zxyzxy[1]
+        y_mean = zxyzxy[2]
+    elif len(zxyzxy) == 6:
+        zxyzxy 
+        z_mean = int((zxyzxy[0] + zxyzxy[3]) / 2)
+        x_mean = int((zxyzxy[1] + zxyzxy[4]) / 2)
+        y_mean = int((zxyzxy[2] + zxyzxy[5]) / 2)
+    else:
+        raise ValueError(f"Unknown bbox or centroid format; {zxyzxy}")
+
     z0 = np.clip(z_mean - int(target_sz[0] / 2), a_min=0, a_max=sz[1])
     z1 = np.clip(z_mean + int(target_sz[0] / 2), a_min=0, a_max=sz[1])
     if z1 - z0 > target_sz[0]:
         z1 = z0 + target_sz[0]
-    x_mean = int((zxyzxy[1] + zxyzxy[4]) / 2)
     x0 = np.clip(x_mean - int(target_sz[1] / 2), a_min=0, a_max=sz[2])
     x1 = np.clip(x_mean + int(target_sz[1] / 2), a_min=0, a_max=sz[2])
     if x1 - x0 > target_sz[1]:
         x1 = x0 + target_sz[1]
-    y_mean = int((zxyzxy[2] + zxyzxy[5]) / 2)
     y0 = np.clip(y_mean - int(target_sz[2] / 2), a_min=0, a_max=sz[3])
     y1 = np.clip(y_mean + int(target_sz[2] / 2), a_min=0, a_max=sz[3])
     if y1 - y0 > target_sz[2]:
