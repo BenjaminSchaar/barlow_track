@@ -17,7 +17,7 @@ from submitit import AutoExecutor, LocalJob, DebugJob
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
-def main(hyperparameter_path, run_locally=False, DEBUG=False):
+def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=False):
     if DEBUG:
         run_locally = True
     if hyperparameter_path is None:
@@ -83,7 +83,8 @@ def main(hyperparameter_path, run_locally=False, DEBUG=False):
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
     total_budget = 5 if DEBUG else 30
-    num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
+    if num_parallel_jobs is None:
+        num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
 
     jobs = []
     submitted_jobs = 0
@@ -146,11 +147,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--hyperparameter_template_path', '-p', default=None)
     parser.add_argument('--run_locally', action='store_true')
+    parser.add_argument('--num_parallel_jobs', default=None)
     parser.add_argument('--DEBUG', action='store_true')
 
     args = parser.parse_args()
     hyperparameter_template_path = args.hyperparameter_template_path
     run_locally = args.run_locally
+    num_parallel_jobs = args.num_parallel_jobs
     DEBUG = args.DEBUG
 
-    main(hyperparameter_template_path, run_locally, DEBUG)
+    main(hyperparameter_template_path, run_locally, num_parallel_jobs, DEBUG=DEBUG)
