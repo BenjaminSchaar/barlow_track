@@ -43,8 +43,6 @@ batch_size: 1  # This should stay; one volume = one batch
 weight_decay: 1e-6
 epochs: 50
 lr: 0.0001
-learning_rate_weights: 0.2
-learning_rate_biases: 0.0048
 
 num_frames: 200
 train_fraction: 0.8

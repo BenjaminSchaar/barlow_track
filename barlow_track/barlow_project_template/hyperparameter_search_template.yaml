@@ -8,11 +8,6 @@ hyperparameters:
     bounds: [0.000001, 0.001]
     log_scale: true
 
-  - name: learning_rate_weights
-    type: range
-    bounds: [0.1, 10.0]
-    log_scale: true
-
   - name: embedding_dim
     type: choice
     values: [256, 512, 1024, 2048]
