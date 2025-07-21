@@ -158,14 +158,17 @@ def train_barlow_network(args):
 
         # Calculate the final test loss
         test_loss, test_loss_original, test_loss_transpose = 0, 0, 0
-        for test_step, (y1, y2) in enumerate(data_module.test_dataloader()):
-            y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
-            loss, loss_original, loss_transpose = model.forward(y1, y2)
-            test_loss += loss.item()
-            test_loss_original += loss_original.item()
-            test_loss_transpose += loss_transpose.item()
-        # Package losses into a dictionary for return
-        test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
+        model.eval()
+        torch.cuda.empty_cache()
+        with torch.no_grad():
+            for _, (y1, y2) in enumerate(data_module.test_dataloader()):
+                y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
+                loss, loss_original, loss_transpose = model.forward(y1, y2)
+                test_loss += loss.item()
+                test_loss_original += loss_original.item()
+                test_loss_transpose += loss_transpose.item()
+            # Package losses into a dictionary for return
+            test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
 
         if run is not None:
             run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
