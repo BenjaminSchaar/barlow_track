@@ -23,6 +23,8 @@ from wbfm.utils.general.utils_filenames import get_sequential_filename
 
 def train_barlow_network(args):
 
+    torch.manual_seed(43)
+
     # Load ground truth
     project_data1 = ProjectData.load_final_project_data(args.project_path, allow_hybrid_loading=True)
 
@@ -34,8 +36,6 @@ def train_barlow_network(args):
                                             crop_kwargs=dict(target_sz=target_sz))
     data_module.setup()
     loader = data_module.train_dataloader()
-
-    torch.manual_seed(43)
     cuda_index = os.getenv("CUDA_VISIBLE_DEVICES", 0)
     gpu = torch.device(f"cuda:{cuda_index}" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {gpu}")
