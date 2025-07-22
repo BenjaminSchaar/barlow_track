@@ -85,9 +85,13 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
     total_budget = 5 if DEBUG else 30
     if num_parallel_jobs is None:
         num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
+    else:
+        num_parallel_jobs = int(num_parallel_jobs)
 
     jobs = []
     submitted_jobs = 0
+    trial_offset = 0
+
     # Run until all the jobs have finished and our budget is used up.
     while submitted_jobs < total_budget or jobs:
         for job, trial_index in jobs[:]:
@@ -107,8 +111,15 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
             max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
         for trial_index, parameters in trial_index_to_param.items():
             # Make a new folder in the parent folder
-            this_folder = os.path.join(experiment_parent_folder, f"trial_{trial_index}")
-            logging.info(f"Making parameter files for trial {trial_index} in folder {this_folder}")
+            # Find a unique folder name by incrementing trial_offset if needed
+            while True:
+                this_folder = os.path.join(experiment_parent_folder, f"trial_{trial_index + trial_offset}")
+                if not os.path.exists(this_folder):
+                    break
+                logging.warning(f"Found folder {this_folder}; assuming these are old trials with the same settings, and using an index offset")
+                trial_offset += 1
+            
+            logging.info(f"Making parameter files for trial {trial_index} in folder {this_folder} with index offset {trial_offset}")
             os.makedirs(this_folder, exist_ok=False)
             os.makedirs(os.path.join(this_folder, 'log'), exist_ok=False)
             os.makedirs(os.path.join(this_folder, 'checkpoints'), exist_ok=False)
