@@ -13,13 +13,8 @@ from tqdm.auto import tqdm
 class NeuronAugmentedImagePairDataset(Dataset):
     def __init__(self, list_of_neurons_of_volumes):
         self.all_volume_crops = []
-        j = 0
-        print("Converting volumes to torch arrays")
         for neuron in list_of_neurons_of_volumes:
             self.all_volume_crops.append(torch.from_numpy(neuron.astype(np.float16)))
-            if j%50==0:
-                print("Volume #"+str(j))
-            j+=1
         self.augmentor = Transform()
 
     def __getitem__(self, idx):
@@ -110,7 +105,6 @@ def get_crops_from_project(crop_kwargs, frames, project_data):
         while i < len(random_sample) and num_selected_frames < frames:
             t = random_sample[i]
             vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs)
-            print(t)
             if len(vol_dat) != 0 and len(vol_dat) <= 200:
                 vol_dat = np.stack(vol_dat, 0)
                 list_of_neurons_of_volumes.append(vol_dat)
