@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+import random
 from barlow_track.utils.barlow import Transform
 from barlow_track.utils.data_loading import get_bbox_data_for_volume
 from pytorch_lightning import LightningDataModule
@@ -93,8 +94,21 @@ class NeuronCropImageDataModule(LightningDataModule):
 
 def get_crops_from_project(crop_kwargs, frames, project_data):
     list_of_neurons_of_volumes = []
-    for t in tqdm(range(frames)):
-        vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs)
-        vol_dat = np.stack(vol_dat, 0)
-        list_of_neurons_of_volumes.append(vol_dat)
+    max_num_frames = len(project_data.red_data)
+    random_sample = random.sample(range(max_num_frames), max_num_frames)
+    
+    i = 0
+    num_selected_frames = 0
+    with tqdm(total=frames, desc="Sampling frames") as pbar:
+        while i < len(random_sample) and num_selected_frames < frames:
+            t = random_sample[i]
+            vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs)
+            if len(vol_dat) != 0 and len(vol_dat) <= 200:
+                vol_dat = np.stack(vol_dat, 0)
+                list_of_neurons_of_volumes.append(vol_dat)
+                num_selected_frames += 1
+                pbar.update(1)  # manually update progress when sample is valid
+            i += 1
+    
+    print("Number of frames selected: " + str(len(list_of_neurons_of_volumes)))
     return list_of_neurons_of_volumes
