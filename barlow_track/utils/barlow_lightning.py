@@ -95,7 +95,7 @@ class NeuronCropImageDataModule(LightningDataModule):
 def get_crops_from_project(crop_kwargs, frames, project_data):
     list_of_neurons_of_volumes = []
     max_num_frames = len(project_data.red_data)
-    random_sample = random.sample(range(max_num_frames), max_num_frames)
+    random_sample = sorted(random.sample(range(max_num_frames), max_num_frames))
     
     i = 0
     num_selected_frames = 0
