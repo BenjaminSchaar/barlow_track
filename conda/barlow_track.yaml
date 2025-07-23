@@ -9,23 +9,65 @@ channels:
   - conda-forge
   - pytorch
   - nvidia
+  - bioconda
+  - nodefaults
 dependencies:
   - python=3.8
-  - tsnecuda
-  - pytorch
-  - torchvision
-  - torchaudio
-  - pytorch-cuda=12.1  # The cluster has 12.4
-  - lightning
-  - tqdm
-  - matplotlib
-  - scikit-image
-  - scikit-learn
-  - zarr
+  - pip
+  - numpy
   - pandas
-  - umap-learn
+  - tqdm
+  - zarr
+  - scipy
+  - torchaudio
+  - cudatoolkit=10.0.130
+  - cudnn=7.6.5
+  - matplotlib
+  - torchvision
+  - scikit-learn
+  - scikit-image
+  - networkx
+  - lmfit
+  - natsort
+  - snakemake
+  - napari[all]
+  - pytorch=1.13.0
+  - torchvision
+  - pytorch-cuda=11.6
+  - plotly
   - pip:
-      - sacred
-      - ruamel.yaml
-      - wandb
-      #- pytorch3dunet  # Local
+    - tifffile==2023.7.10
+    - simpleitk==2.2.1
+    - opencv-contrib-python-headless
+    - tables
+    - networkx
+    - tensorflow
+    - sacred
+    - ruamel.yaml
+    - stardist  # Use 0.8.4 for printing fix, but not actually necessary
+    - hashfs
+    - tinydb
+    - tinydb-serialization
+    - openpyxl
+    - pytest
+    - backports.cached_property
+    - pytorch-lightning
+    - wandb
+    - seaborn
+    - hdbscan
+    - statsmodels
+    - ppca
+    - methodtools
+    - kaleido
+    - skan==0.9 # For behavior pipeline
+    - loguru  # For imutils
+    - ndtiff
+    - ndstorage
+    - torchio
+    - umap-learn
+    - pynwb
+    - ndx_multichannel_volume
+    - arviz
+    - xlrd
+    - submitit
+    - kaleido
