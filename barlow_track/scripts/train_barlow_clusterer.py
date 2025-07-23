@@ -75,7 +75,9 @@ def train_barlow_network(args):
 
     wandb_opt = dict(mode="disabled") if args.DEBUG else {}
     json_stats = []
-    test_losses = dict(test_loss=0, test_loss_original=0, test_loss_transpose=0)
+    test_losses = None
+    val_losses = None
+    train_losses = None
 
     # Initialize wandb run, if the user enables it
     if args.wandb_name and args.wandb_username:
@@ -114,10 +116,9 @@ def train_barlow_network(args):
                         json_stats.append(stats)
 
                         # wandb logging
+                        train_losses = {"loss": loss.item(), "loss_original": loss_original.item(), "loss_transpose": loss_transpose.item()}
                         if run is not None:
-                            run.log({"loss": loss.item(),
-                                    "loss_original": loss_original.item(),
-                                    "loss_transpose": loss_transpose.item()})
+                            run.log(train_losses)
 
                         # More infrequently, plot embedding
                         if step % (100*args.print_freq) == 0:
@@ -149,8 +150,9 @@ def train_barlow_network(args):
                                 fig = visualize_model_performance(c, save_fname=None, vmin=-0.5, vmax=1)
                                 run.log({"validation_chart": fig})
 
+                val_losses = {"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose}
                 if run is not None:
-                    run.log({"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose})
+                    run.log(val_losses)
                 # Printing
                 stats = dict(epoch=epoch, val_loss=val_loss, time=int(time.time() - start_time))
                 print(json.dumps(stats))
@@ -171,7 +173,7 @@ def train_barlow_network(args):
             test_losses = dict(test_loss=test_loss, test_loss_original=test_loss_original, test_loss_transpose=test_loss_transpose)
 
         if run is not None:
-            run.log({"test_loss": test_loss, "test_loss_original": test_loss_original, "test_loss_transpose": test_loss_transpose})
+            run.log(test_losses)
         # Printing
         stats = dict(epoch=epoch, test_loss=test_loss, time=int(time.time() - start_time))
         print(json.dumps(stats))
@@ -183,6 +185,18 @@ def train_barlow_network(args):
         print("Out of memory error, saving model")
         print(e)
     finally:
+        if test_losses is None:
+            # Then the run failed in some way, and an alternate value should be returned
+            if val_losses is not None:
+                test_losses = {k.replace('val', 'test'): v for k, v in val_losses.items()}
+                logging.warning("Could not calculate test losses, using last validation loss instead")
+            elif train_losses is not None:
+                test_losses = {k.replace('train', 'test'): v for k, v in train_losses.items()}
+                logging.warning("Could not calculate test losses, using last training loss instead")
+            else:
+                test_losses = dict(test_loss=np.inf, test_loss_original=np.inf, test_loss_transpose=np.inf)
+                logging.warning("Could not calculate any loss, returning np.inf for test losses")
+                
         # Clean up the wandb run
         if run is not None:
             run.finish()
