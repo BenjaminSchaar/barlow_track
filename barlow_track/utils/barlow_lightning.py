@@ -12,7 +12,14 @@ from tqdm.auto import tqdm
 
 class NeuronAugmentedImagePairDataset(Dataset):
     def __init__(self, list_of_neurons_of_volumes):
-        self.all_volume_crops = [torch.from_numpy(this_vol.astype(float)) for this_vol in list_of_neurons_of_volumes]
+        self.all_volume_crops = []
+        j = 0
+        print("Converting volumes to torch arrays")
+        for neuron in list_of_neurons_of_volumes:
+            self.all_volume_crops.append(torch.from_numpy(neuron.astype(np.float32)))
+            if j%50==0:
+                print("Volume #"+str(j))
+            j+=1
         self.augmentor = Transform()
 
     def __getitem__(self, idx):
@@ -94,7 +101,7 @@ class NeuronCropImageDataModule(LightningDataModule):
 
 def get_crops_from_project(crop_kwargs, frames, project_data):
     list_of_neurons_of_volumes = []
-    max_num_frames = len(project_data.red_data)
+    max_num_frames = project_data.num_frames
     random_sample = sorted(random.sample(range(max_num_frames), max_num_frames))
     
     i = 0
