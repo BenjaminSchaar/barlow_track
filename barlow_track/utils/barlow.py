@@ -70,7 +70,7 @@ class BarlowTwins3d(nn.Module):
     def original_barlow_loss(self, c_features):
         on_diag = torch.diagonal(c_features).add_(-1).pow_(2).sum()
         off_diag = off_diagonal(c_features).pow_(2).sum()
-        loss_features = on_diag + self.args.lambd * off_diag
+        loss_features = (on_diag + self.args.lambd * off_diag) / c_features.numel
         return loss_features
 
     def calculate_correlation_matrix(self, y1, y2):
