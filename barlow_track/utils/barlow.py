@@ -35,7 +35,11 @@ class BarlowTwins3d(nn.Module):
         self.backbone.fc = nn.Identity()
 
         # projector
-        sizes = [embedding_dim] + list(map(int, args.projector.split('-'))) + [args.projector_final]
+        sizes = [embedding_dim] + list(map(int, args.projector.split('-')))
+        if 'projector_final' in vars(args):
+            # Otherwise assume it's all in the original projector string
+            sizes += [args.projector_final]
+
         layers = []
         for i in range(len(sizes) - 2):
             layers.append(nn.Linear(sizes[i], sizes[i + 1], bias=False))
