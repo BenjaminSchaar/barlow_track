@@ -14,7 +14,7 @@ class NeuronAugmentedImagePairDataset(Dataset):
     def __init__(self, list_of_neurons_of_volumes):
         self.all_volume_crops = []
         for neuron in list_of_neurons_of_volumes:
-            self.all_volume_crops.append(torch.from_numpy(neuron.astype(np.float16)))
+            self.all_volume_crops.append(torch.from_numpy(neuron.astype(np.float32)))
         self.augmentor = Transform()
 
     def __getitem__(self, idx):
