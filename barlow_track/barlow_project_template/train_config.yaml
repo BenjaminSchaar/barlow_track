@@ -29,9 +29,15 @@ target_sz_z: 4
 target_sz_xy: 128
 
 # Augmentation hyperparameters
+# First path through the Siamese network
+p_RandomAffine_base: 1.0
+p_RandomBlur_base: 0.1
+p_RandomNoise_base: 0.5
+
+# Second path; default is more augmentation
 p_RandomFlip: 0
-p_RandomBlur: 0.25
-p_RandomAffine: 1.0  # At least one deformation should have probability 1, so that the two images are definitely different
+p_RandomBlur: 0.0
+p_RandomAffine: 0.1  # At least one deformation should have probability 1, so that the two images are definitely different
 p_RandomElasticDeformation: 0.0
 zxy_RandomElasticDeformation: [1, 5, 5]
 p_RandomNoise: 0.1

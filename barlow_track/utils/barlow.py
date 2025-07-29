@@ -172,12 +172,15 @@ class Transform:
         self.final_normalization_no_copy = tio.RescaleIntensity(percentiles=(5, 100), copy=False)
 
         self.transform = tio.transforms.Compose([
+            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine_base', 1.0)),
+            tio.RandomBlur(p=args.get('p_RandomBlur_base', 0.1)),
+            tio.RandomNoise(p=args.get('p_RandomNoise_base', 0.5)),
             self.final_normalization
         ])
         self.transform_prime = transforms.Compose([
             tio.RandomFlip(axes=(1, 2), p=args.get('p_RandomFlip', 0.0)),  # Do not flip z
-            tio.RandomBlur(p=args.get('p_RandomBlur', 0.25)),
-            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 1.0)),  # Also allows scaling
+            tio.RandomBlur(p=args.get('p_RandomBlur', 0.0)),
+            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 0.1)),
             tio.RandomElasticDeformation(max_displacement=args.get('zxy_RandomElasticDeformation', (1, 5, 5)), p=args.get('p_RandomElasticDeformation', 0.0)),
             tio.RandomNoise(std=args.get('std_RandomNoise', 0.25), p=args.get('p_RandomNoise', 0.1)),
             # tio.ZNormalization()
