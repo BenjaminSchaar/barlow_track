@@ -73,8 +73,8 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
         executor = AutoExecutor(folder=experiment_parent_folder, cluster='slurm')
         logging.info(f"Running experiments in folder: {experiment_parent_folder}")
 
-    # About 50 epochs per day
-    num_days = int(baseline_params['epochs'] / 50) + 1
+    # About 100 epochs per day
+    num_days = int(baseline_params['epochs'] / 100) + 1
     executor.update_parameters(timeout_min=65 * 12 * num_days)
     if not run_locally:
         executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
