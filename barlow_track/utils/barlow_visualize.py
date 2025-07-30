@@ -40,6 +40,25 @@ def visualize_model_performance(c, save_fname=None, vmin=None, vmax=None):
 
 
 def plot_clusters(db, Y, class_labels=True, class_label_for_noise=False):
+    """
+    Plots the clusters found by a clustering algorithm (e.g., DBSCAN) in 2D space.
+
+    Parameters
+    ----------
+    db : DBSCAN or similar clustering object
+        The clustering object containing labels and core sample indices.
+    Y : np.ndarray
+        The 2D coordinates of the data points to be plotted. E.x. output of UMAP
+    class_labels : bool, optional
+        Whether to annotate the clusters with their labels (text placed at the cluster centroid). Default is True.
+    class_label_for_noise : bool, optional
+        Whether to annotate the noise points (-1 label) with a label. Default is False.
+    
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object containing the plot of the clusters.
+    """
     fig = plt.figure(figsize=(10, 10), dpi=300)
 
     if Y.shape[1] > 2:
