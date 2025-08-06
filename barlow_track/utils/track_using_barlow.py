@@ -28,7 +28,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
                                    tracking_mode='global',
-                                   use_projection_space=True,
+                                   use_projection_space=False,
                                    to_plot_relative_accuracy=False,
                                    DEBUG=False,
                                    **project_kwargs):
