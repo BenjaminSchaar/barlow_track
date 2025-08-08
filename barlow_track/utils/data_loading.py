@@ -39,7 +39,7 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
 def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 64, 64]), which_neurons=None,
                                         include_untracked=False):
     """
-    Like get_bbox_data_for_volume, but only returns objects that have an ID in the final tracks
+    Like get_bbox_data_for_volume, but only returns objects that have an ID in the final tracks (unless include_untracked=True)
     Instead of returning a list of arrays, returns a dict indexed by the string name as found in project_data
     """
     if which_neurons is None:
@@ -84,7 +84,7 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
             else:
                 # Make a unique name for this untracked object, but keep the correct label
                 ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
-                this_name = f"untracked_time_{t}_{ind_in_list}"
+                this_name = f"untracked_time_{t}_{ind_in_list}_{this_seg_label}"
         zxy = [row['z'], row['x'], row['y']]
         # Repeat to be zxyzxy
         zxyzxy = [zxy[0], zxy[1], zxy[2], zxy[0], zxy[1], zxy[2]]

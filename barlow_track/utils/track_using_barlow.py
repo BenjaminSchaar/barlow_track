@@ -124,7 +124,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         # Embed using the model
         all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space)
 
-        linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices, X = build_embedding_metadata(
+        linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
 
         svd_components = 50
@@ -149,11 +149,11 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                    cluster_directly_on_svd_space=True,
                    n_clusters_per_window=3,
                    n_volumes_per_window=120,
-                   linear_ind_to_raw_neuron_ind=linear_ind_to_raw_neuron_ind)
+                   linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
         tracker = WormTsneTracker(X_svd, **opt)
         tracker_no_svd = WormTsneTracker(X, **opt)  # This is only for debugging later
 
-        save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, project_config, project_data,
+        save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
                                   subfolder=results_subfolder_full)
 
@@ -225,7 +225,7 @@ def embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space
     return all_embeddings
 
 
-def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, project_config, project_data,
+def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
                               time_index_to_linear_feature_indices, tracker, tracker_no_svd,
                               subfolder):
     fname = f'{subfolder}/worm_tracker_barlow.pickle'
@@ -238,8 +238,8 @@ def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_raw_neuron_
     z[:] = X
     fname = f'{subfolder}/time_index_to_linear_feature_indices.pickle'
     project_data.project_config.pickle_data_in_local_project(time_index_to_linear_feature_indices, fname)
-    fname = f'{subfolder}/linear_ind_to_raw_neuron_ind.pickle'
-    project_data.project_config.pickle_data_in_local_project(linear_ind_to_raw_neuron_ind, fname)
+    fname = f'{subfolder}/linear_ind_to_t_and_seg_id.pickle'
+    project_data.project_config.pickle_data_in_local_project(linear_ind_to_t_and_seg_id, fname)
     fname = f'{subfolder}/linear_ind_to_gt_ind.pickle'
     project_data.project_config.pickle_data_in_local_project(linear_ind_to_gt_ind, fname)
 
@@ -258,7 +258,7 @@ def build_embedding_metadata(all_embeddings, project_data):
     df_gt_tracks = project_data.get_final_tracks_only_finished_neurons()[0]
     X = []
     time_index_to_linear_feature_indices = defaultdict(list)
-    linear_ind_to_raw_neuron_ind = {}
+    linear_ind_to_t_and_seg_id = {}
     linear_ind_to_gt_ind = {}
     i_linear_ind = 0
     for name, vols_all_times in all_embeddings.items():
@@ -269,7 +269,8 @@ def build_embedding_metadata(all_embeddings, project_data):
         has_gt = False
         if df_gt_tracks is not None:
             try:
-                df_this_neuron = df_gt_tracks[name, 'raw_neuron_ind_in_list']
+                df_this_neuron_ind = df_gt_tracks[name, 'raw_neuron_ind_in_list']
+                df_this_neuron_seg = df_gt_tracks[name, 'raw_segmentation_id']
                 gt_ind = name2int_neuron_and_tracklet(name)
                 has_gt = True
             except KeyError:
@@ -279,16 +280,16 @@ def build_embedding_metadata(all_embeddings, project_data):
             time_index_to_linear_feature_indices[t_global].append(i_linear_ind)
             linear_ind_to_gt_ind[i_linear_ind] = gt_ind
             if has_gt:
-                linear_ind_to_raw_neuron_ind[i_linear_ind] = int(df_this_neuron[t_global])
+                linear_ind_to_t_and_seg_id[i_linear_ind] = (t_global, int(df_this_neuron_ind[t_global]), int(df_this_neuron_seg[t_global]))
             else:
-                # Based on an expected name like: untracked_time_0_1234, where the last number is the raw_neuron_ind
+                # Based on an expected name like: untracked_time_0_1234_1233, where the numbers are: t, raw_neuron_ind, raw_segmentation_id
                 # i.e. using segmentation_metadata.mask_index_to_i_in_array for that object
                 assert 'neuron' not in name, \
                     f"Found neuron in object named: {name}; this branch should only be for untracked objects"
-                linear_ind_to_raw_neuron_ind[i_linear_ind] = int(name.split('_')[-1])
+                linear_ind_to_t_and_seg_id[i_linear_ind] = (t_global, int(name.split('_')[-2]), int(name.split('_')[-1]))
             i_linear_ind += 1
         X.append(vols_array)
-    return linear_ind_to_gt_ind, linear_ind_to_raw_neuron_ind, time_index_to_linear_feature_indices, X
+    return linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, time_index_to_linear_feature_indices, X
 
 
 # Attempts to get vibe coding to work

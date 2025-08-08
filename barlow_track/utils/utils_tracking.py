@@ -20,6 +20,7 @@ from wbfm.utils.external.utils_neuron_names import int2name_neuron
 class WormTsneTracker:
     X_svd: np.array
     time_index_to_linear_feature_indices: dict
+    linear_ind_to_t_and_seg_id: dict = None
     linear_ind_to_raw_neuron_ind: dict = None
 
     n_clusters_per_window: int = 5
@@ -71,6 +72,20 @@ class WormTsneTracker:
         all_start_volumes = list(np.arange(0, self.num_frames - self.n_volumes_per_window, step=self.tracker_stride))
         all_start_volumes.append(self.num_frames - self.n_volumes_per_window - 1)
         return all_start_volumes
+
+    def get_raw_neuron_ind_from_linear_ind(self, linear_ind):
+        """
+        Get the raw neuron index from the linear index.
+        This is useful for tracking and clustering.
+        """
+        if self.linear_ind_to_raw_neuron_ind is not None:
+            return self.linear_ind_to_raw_neuron_ind.get(linear_ind, None)
+        elif self.linear_ind_to_t_and_seg_id is not None:
+            # This has the same info, but is a tuple (t, raw_neuron_ind, raw_segmentation_id)
+            t_ind_seg = self.linear_ind_to_t_and_seg_id.get(linear_ind, (None, None, None))
+            return t_ind_seg[1]
+        else:
+            raise ValueError(f"Raw neuron index {linear_ind} not found in linear indices.")
 
     def cluster_obj2dataframe(self, db_svd, start_volume: int = 0, vol_ind: list = None,
                               n_vols=None, labels_are_in_feature_order=False):
@@ -138,7 +153,8 @@ class WormTsneTracker:
                     neuron_key = (this_neuron_name, 'raw_neuron_ind_in_list')
                     likelihood_key = (this_neuron_name, 'likelihood')
                     t = self.dict_linear_index_to_time[i]
-                    raw_neuron_ind = self.linear_ind_to_raw_neuron_ind[i]
+                    
+                    raw_neuron_ind = self.get_raw_neuron_ind_from_linear_ind(i)
                     # Only works if a full cluster object was passed
                     likelihood = all_likelihoods[i]
 
@@ -180,7 +196,7 @@ class WormTsneTracker:
 
                     # Convert that to a time and a local segmentation
                     time_in_video = self.dict_linear_index_to_time[linear_index]
-                    raw_neuron_ind_in_list = self.linear_ind_to_raw_neuron_ind[linear_index]
+                    raw_neuron_ind_in_list = self.get_raw_neuron_ind_from_linear_ind(linear_index)
 
                     # Save in the dataframe dict
                     cluster_dict[key][time_in_video] = raw_neuron_ind_in_list
