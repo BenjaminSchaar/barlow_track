@@ -143,6 +143,11 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             X_svd = alg.fit_transform(X)
         project_config.logger.info(f"Finished truncation")
 
+        # Get tracker parameters from yaml file
+        tracker_cfg = project_config.get_tracking_config()
+        tracker_opt = dict(umap_opt=tracker_cfg.config.get('umap_opt', dict()),
+                        db_opt=tracker_cfg.config.get('db_opt', dict()))
+
         # Save embeddings and trackers
         opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
                    svd_components=svd_components,
@@ -150,6 +155,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                    n_clusters_per_window=3,
                    n_volumes_per_window=120,
                    linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
+        opt.update(tracker_opt)
+        
         tracker = WormTsneTracker(X_svd, **opt)
         tracker_no_svd = WormTsneTracker(X, **opt)  # This is only for debugging later
 
