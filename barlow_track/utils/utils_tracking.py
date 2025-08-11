@@ -28,7 +28,7 @@ class WormTsneTracker:
     tracker_stride: int = None
 
     cluster_directly_on_svd_space: bool = True  # i.e. do not use tsne
-    opt_tsne: dict = None
+    opt_umap: dict = None
     opt_db: dict = None
     svd_components: int = 50
 
@@ -45,11 +45,18 @@ class WormTsneTracker:
 
     def __post_init__(self):
         # Parameters should be optimized
-        self.opt_tsne = dict(n_components=2, perplexity=10, early_exaggeration=200, force_magnify_iters=500)
-        self.opt_db = dict(min_cluster_size=int(0.6*self.n_volumes_per_window),
-                           min_samples=int(0.1*self.n_volumes_per_window),
-                           max_cluster_size=int(1.1*self.n_volumes_per_window),
-                           cluster_selection_method='leaf')
+        if self.opt_db is None:
+            self.opt_db = dict(
+                min_cluster_size=int(0.5 * self.num_frames),
+                min_samples=int(0.02 * self.num_frames),
+                cluster_selection_method='leaf'
+            )
+            if self.db_opt['min_samples'] < 1:
+                self.db_opt['min_samples'] = 1
+            if self.db_opt['min_cluster_size'] < 1:
+                self.db_opt['min_cluster_size'] = 1
+        if self.opt_umap is None:
+            self.umap_opt = dict(n_components=10, n_neighbors=10)
 
         if self.tracker_stride is None:
             self.tracker_stride = int(0.5 * self.n_volumes_per_window)
@@ -114,7 +121,7 @@ class WormTsneTracker:
             all_likelihoods = None
         else:
             all_labels = db_svd.labels_
-            all_likelihoods = db_svd.probabilities_
+            all_likelihoods = db_svd.probabilities_umap_opt
 
         if n_vols is None:
             n_vols = self.n_volumes_per_window
@@ -250,7 +257,6 @@ class WormTsneTracker:
         time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
 
         # Options
-        opt_tsne = self.opt_tsne
         opt_db = self.opt_db
 
         # Get this window of data
@@ -265,10 +271,12 @@ class WormTsneTracker:
             Y_tsne_svd = X
             db_svd = HDBSCAN(**opt_db).fit(Y_tsne_svd)
         else:
-            from tsnecuda import TSNE
-            tsne = TSNE(**opt_tsne)
-            Y_tsne_svd = tsne.fit_transform(X)
-            db_svd = HDBSCAN(**opt_db).fit(Y_tsne_svd)
+            umap_opt = self.umap_opt
+            logging.info(f"Doing UMAP projection with options: {umap_opt}")
+            from umap import UMAP
+            umap = UMAP(**umap_opt)
+            X_umap = umap.fit_transform(self.X_svd)
+            self.X_umap = X_umap
 
         return db_svd, Y_tsne_svd, linear_ind
 
@@ -416,11 +424,13 @@ class WormTsneTracker:
         -------
         """
         if umap_opt is None:
-            umap_opt = dict(n_components=10, n_neighbors=10)
+            umap_opt = self.umap_opt
+        else:
+            self.umap_opt = umap_opt
 
         # Do umap projection
         if umap_projection:
-            logging.info("Doing UMAP projection...")
+            logging.info(f"Doing UMAP projection with options: {umap_opt}")
             from umap import UMAP
             umap = UMAP(**umap_opt)
             X_umap = umap.fit_transform(self.X_svd)
@@ -430,17 +440,8 @@ class WormTsneTracker:
 
         # Cluster
         db_opt = self.opt_db.copy()
-        # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
-        db_opt['min_cluster_size'] = int(0.5 * self.num_frames)
-        db_opt['min_samples']      = int(0.02 * self.num_frames)
-        # Make sure min_samples and min_cluster_size are not too large are greater than 0
-        if db_opt['min_samples'] < 1:
-            db_opt['min_samples'] = 1
-        if db_opt['min_cluster_size'] < 1:
-            db_opt['min_cluster_size'] = 1
-        # db_opt['max_cluster_size'] = int(1.1 * self.num_frames)  # Doesn't work
         db_opt['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
-        logging.info("Clustering...")
+        logging.info(f"Clustering using options: {db_opt}")
         db_svd = HDBSCAN(**db_opt).fit(X_umap)
         self.global_clusterer = db_svd
 
