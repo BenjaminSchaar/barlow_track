@@ -17,7 +17,7 @@ from wbfm.utils.external.utils_neuron_names import int2name_neuron
 
 
 @dataclass
-class WormTsneTracker:
+class WormClusterTracker:
     X_svd: np.array
     time_index_to_linear_feature_indices: dict
     linear_ind_to_t_and_seg_id: dict = None

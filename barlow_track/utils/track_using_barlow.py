@@ -21,7 +21,7 @@ from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.general.utils_filenames import pickle_load_binary
 from wbfm.utils.external.utils_neuron_names import name2int_neuron_and_tracklet
 from wbfm.utils.projects.utils_redo_steps import add_metadata_to_df_raw_ind
-from barlow_track.utils.utils_tracking import WormTsneTracker
+from barlow_track.utils.utils_tracking import WormClusterTracker
 
 
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
@@ -97,7 +97,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                        n_clusters_per_window=3,
                        n_volumes_per_window=120,
                        linear_ind_to_raw_neuron_ind=linear_ind_to_raw_neuron_ind)
-            tracker = WormTsneTracker(X, **opt)
+            tracker = WormClusterTracker(X, **opt)
         else:
             tracker = None
 
@@ -156,9 +156,9 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                    n_volumes_per_window=120,
                    linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
         opt.update(tracker_opt)
-        
-        tracker = WormTsneTracker(X_svd, **opt)
-        tracker_no_svd = WormTsneTracker(X, **opt)  # This is only for debugging later
+
+        tracker = WormClusterTracker(X_svd, **opt)
+        tracker_no_svd = WormClusterTracker(X, **opt)  # This is only for debugging later
 
         save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
@@ -429,7 +429,7 @@ class BarlowProject:
                    n_volumes_per_window=120,
                    linear_ind_to_raw_neuron_ind=self.linear_ind_to_raw_neuron_ind)
         # TODO: Modify tracker to not be worm-specific
-        tracker = WormTsneTracker(X_svd, **opt)
+        tracker = WormClusterTracker(X_svd, **opt)
 
         self.save_intermediate_results()
 
