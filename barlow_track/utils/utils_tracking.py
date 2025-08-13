@@ -121,7 +121,7 @@ class WormClusterTracker:
             all_likelihoods = None
         else:
             all_labels = db_svd.labels_
-            all_likelihoods = db_svd.probabilities_umap_opt
+            all_likelihoods = db_svd.probabilities_
 
         if n_vols is None:
             n_vols = self.n_volumes_per_window
