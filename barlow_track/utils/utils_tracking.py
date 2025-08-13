@@ -51,12 +51,12 @@ class WormClusterTracker:
                 min_samples=int(0.02 * self.num_frames),
                 cluster_selection_method='leaf'
             )
-            if self.db_opt['min_samples'] < 1:
-                self.db_opt['min_samples'] = 1
-            if self.db_opt['min_cluster_size'] < 1:
-                self.db_opt['min_cluster_size'] = 1
+            if self.opt_db['min_samples'] < 1:
+                self.opt_db['min_samples'] = 1
+            if self.opt_db['min_cluster_size'] < 1:
+                self.opt_db['min_cluster_size'] = 1
         if self.opt_umap is None:
-            self.umap_opt = dict(n_components=10, n_neighbors=10)
+            self.opt_umap = dict(n_components=10, n_neighbors=10)
 
         if self.tracker_stride is None:
             self.tracker_stride = int(0.5 * self.n_volumes_per_window)
@@ -271,10 +271,10 @@ class WormClusterTracker:
             Y_tsne_svd = X
             db_svd = HDBSCAN(**opt_db).fit(Y_tsne_svd)
         else:
-            umap_opt = self.umap_opt
-            logging.info(f"Doing UMAP projection with options: {umap_opt}")
+            opt_umap = self.opt_umap
+            logging.info(f"Doing UMAP projection with options: {opt_umap}")
             from umap import UMAP
-            umap = UMAP(**umap_opt)
+            umap = UMAP(**opt_umap)
             X_umap = umap.fit_transform(self.X_svd)
             self.X_umap = X_umap
 
@@ -414,7 +414,7 @@ class WormClusterTracker:
         self.df_final = df_combined
         return df_combined
 
-    def track_using_global_clusterer(self, umap_projection=True, umap_opt=None):
+    def track_using_global_clusterer(self, umap_projection=True, opt_umap=None):
         """
         Track using a single clustering pass over the entire dataset
 
@@ -423,26 +423,26 @@ class WormClusterTracker:
         Returns
         -------
         """
-        if umap_opt is None:
-            umap_opt = self.umap_opt
+        if opt_umap is None:
+            opt_umap = self.opt_umap
         else:
-            self.umap_opt = umap_opt
+            self.opt_umap = opt_umap
 
         # Do umap projection
         if umap_projection:
-            logging.info(f"Doing UMAP projection with options: {umap_opt}")
+            logging.info(f"Doing UMAP projection with options: {opt_umap}")
             from umap import UMAP
-            umap = UMAP(**umap_opt)
+            umap = UMAP(**opt_umap)
             X_umap = umap.fit_transform(self.X_svd)
             self.X_umap = X_umap
         else:
             X_umap = self.X_svd
 
         # Cluster
-        db_opt = self.opt_db.copy()
-        db_opt['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
-        logging.info(f"Clustering using options: {db_opt}")
-        db_svd = HDBSCAN(**db_opt).fit(X_umap)
+        opt_db = self.opt_db.copy()
+        opt_db['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
+        logging.info(f"Clustering using options: {opt_db}")
+        db_svd = HDBSCAN(**opt_db).fit(X_umap)
         self.global_clusterer = db_svd
 
         # Convert to dataframe

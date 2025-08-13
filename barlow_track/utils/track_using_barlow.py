@@ -145,8 +145,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 
         # Get tracker parameters from yaml file
         tracker_cfg = project_config.get_tracking_config()
-        tracker_opt = dict(umap_opt=tracker_cfg.config.get('umap_opt', dict()),
-                        db_opt=tracker_cfg.config.get('db_opt', dict()))
+        tracker_opt = dict(opt_umap=tracker_cfg.config.get('opt_umap', dict()),
+                        opt_db=tracker_cfg.config.get('opt_db', dict()))
 
         # Save embeddings and trackers
         opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
