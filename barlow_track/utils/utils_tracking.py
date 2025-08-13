@@ -45,18 +45,25 @@ class WormClusterTracker:
 
     def __post_init__(self):
         # Parameters should be optimized
-        if self.opt_db is None:
-            self.opt_db = dict(
-                min_cluster_size=int(0.5 * self.num_frames),
-                min_samples=int(0.02 * self.num_frames),
-                cluster_selection_method='leaf'
-            )
-            if self.opt_db['min_samples'] < 1:
-                self.opt_db['min_samples'] = 1
-            if self.opt_db['min_cluster_size'] < 1:
-                self.opt_db['min_cluster_size'] = 1
-        if self.opt_umap is None:
-            self.opt_umap = dict(n_components=10, n_neighbors=10)
+        default_opt_db = dict(
+            min_cluster_size=int(0.5 * self.num_frames),
+            min_samples=int(0.02 * self.num_frames),
+            cluster_selection_method='leaf'
+        )
+
+        default_opt_umap = dict(n_components=10, n_neighbors=10)
+
+        if self.opt_db is not None:
+            default_opt_db.update(self.opt_db)
+            self.opt_db = default_opt_db
+        if self.opt_db['min_samples'] < 1:
+            self.opt_db['min_samples'] = 1
+        if self.opt_db['min_cluster_size'] < 1:
+            self.opt_db['min_cluster_size'] = 1
+
+        if self.opt_umap is not None:
+            default_opt_umap.update(self.opt_umap)
+            self.opt_umap = default_opt_umap
 
         if self.tracker_stride is None:
             self.tracker_stride = int(0.5 * self.n_volumes_per_window)
