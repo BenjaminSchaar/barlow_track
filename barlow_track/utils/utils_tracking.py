@@ -58,9 +58,9 @@ class WormClusterTracker:
             self.opt_db = default_opt_db
         # If min_cluster_size or min_samples are floats, then multiply them by the number of frames and continue
         if self.opt_db['min_samples'] < 1:
-            self.opt_db['min_samples'] *= self.num_frames
+            self.opt_db['min_samples'] = int(self.opt_db['min_samples']*self.num_frames)
         if self.opt_db['min_cluster_size'] < 1:
-            self.opt_db['min_cluster_size'] *= self.num_frames
+            self.opt_db['min_cluster_size'] = int(self.opt_db['min_cluster_size']*self.num_frames)
         # Also there are minimum values
         if self.opt_db['min_samples'] < 1:
             self.opt_db['min_samples'] = 1
@@ -128,7 +128,6 @@ class WormClusterTracker:
         -------
 
         """
-        logging.info("Converting cluster object to dataframe...")
         if isinstance(db_svd, (list, np.ndarray)):
             all_labels = db_svd
             all_likelihoods = None
@@ -165,7 +164,7 @@ class WormClusterTracker:
 
         if labels_are_in_feature_order:
             # i.e. labels are in the same order as the features, so we can just iterate through them
-            for i, label in enumerate(all_labels):
+            for i, label in tqdm(enumerate(all_labels), desc="Converting cluster object to dataframe"):
                 if label == -1:
                     continue
                 else:
@@ -285,7 +284,7 @@ class WormClusterTracker:
             db_svd = HDBSCAN(**opt_db).fit(Y_tsne_svd)
         else:
             opt_umap = self.opt_umap
-            logging.info(f"Doing UMAP projection with options: {opt_umap}")
+            print(f"Doing UMAP projection with options: {opt_umap}")
             from umap import UMAP
             umap = UMAP(**opt_umap)
             X_umap = umap.fit_transform(self.X_svd)
@@ -443,7 +442,7 @@ class WormClusterTracker:
 
         # Do umap projection
         if umap_projection:
-            logging.info(f"Doing UMAP projection with options: {opt_umap}")
+            print(f"Doing UMAP projection with options: {opt_umap}")
             from umap import UMAP
             umap = UMAP(**opt_umap)
             X_umap = umap.fit_transform(self.X_svd)
@@ -454,7 +453,7 @@ class WormClusterTracker:
         # Cluster
         opt_db = self.opt_db.copy()
         opt_db['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
-        logging.info(f"Clustering using options: {opt_db}")
+        print(f"Clustering using options: {opt_db}")
         db_svd = HDBSCAN(**opt_db).fit(X_umap)
         self.global_clusterer = db_svd
 
