@@ -63,8 +63,10 @@ class WormClusterTracker:
             self.opt_db['min_cluster_size'] = int(self.opt_db['min_cluster_size']*self.num_frames)
         # Also there are minimum values
         if self.opt_db['min_samples'] < 1:
+            logging.warning(f"min_samples ({self.opt_db['min_samples']}) was below minimum value, setting to 1")
             self.opt_db['min_samples'] = 1
         if self.opt_db['min_cluster_size'] < 2:
+            logging.warning(f"min_cluster_size ({self.opt_db['min_cluster_size']}) was below minimum value, setting to 2")
             self.opt_db['min_cluster_size'] = 2
 
         if self.opt_umap is not None:
