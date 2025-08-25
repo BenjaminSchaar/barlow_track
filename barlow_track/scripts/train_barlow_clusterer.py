@@ -125,8 +125,7 @@ def train_barlow_network(args):
                             with torch.no_grad():
                                 c = model.calculate_correlation_matrix(y1, y2)
                                 save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
-                                fig = visualize_model_performance(c, save_fname=save_fname,
-                                                                    vmin=-0.5, vmax=1)
+                                fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
                                 if run is not None:
                                     run.log({"chart": fig})
 
