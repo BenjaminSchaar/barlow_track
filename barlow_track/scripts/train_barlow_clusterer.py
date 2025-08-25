@@ -131,12 +131,12 @@ def train_barlow_network(args):
 
             if args.rank == 0:
                 # save checkpoint
-                state = dict(epoch=epoch + 1, model=model.state_dict(),
-                                optimizer=optimizer.state_dict())
+                state = dict(epoch=epoch + 1, model=model.state_dict(), optimizer=optimizer.state_dict())
                 torch.save(state, checkpoint_file)
                 # Calculate validation loss
                 with torch.no_grad():
                     val_loss, val_loss_original, val_loss_transpose = 0, 0, 0
+                    c = None
                     for val_step, (y1, y2) in enumerate(data_module.val_dataloader()):
                         y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
                         loss, loss_original, loss_transpose = model.forward(y1, y2)
@@ -144,10 +144,15 @@ def train_barlow_network(args):
                         val_loss_original += loss_original.item()
                         val_loss_transpose += loss_transpose.item()
                         # Plot validation embedding
-                        if val_step == 0 and run is not None:
+                        if run is not None:
+                            if c is None:
                                 c = model.calculate_correlation_matrix(y1, y2)
-                                fig = visualize_model_performance(c, save_fname=None, vmin=-0.5, vmax=1)
-                                run.log({"validation_chart": fig})
+                            else:
+                                c += model.calculate_correlation_matrix(y1, y2)
+                    if run is not None and c is not None:
+                        c /= val_step  # Plot the average
+                        fig = visualize_model_performance(c, save_fname=None, vmin=-0.5, vmax=1)
+                        run.log({"validation_chart": fig})
 
                 val_losses = {"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose}
                 if run is not None:
