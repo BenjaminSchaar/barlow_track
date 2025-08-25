@@ -96,13 +96,12 @@ class NeuronCropImageDataModule(LightningDataModule):
 
 
 def get_crops_from_project(crop_kwargs, frames, project_data):
-    list_of_neurons_of_volumes = []
     # Get a permutation of the entire dataset
     max_num_frames = project_data.num_frames
     random_sample = random.sample(range(max_num_frames), max_num_frames)
     
     i = 0
-    selected_frames = []
+    selected_frames, list_of_neurons_of_volumes = [], []
     with tqdm(total=frames, desc="Sampling volumes") as pbar:
         while i < len(random_sample):
             t = random_sample[i]
