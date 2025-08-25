@@ -8,6 +8,7 @@ from barlow_track.utils.data_loading import get_bbox_data_for_volume
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, random_split, DataLoader
 from tqdm.auto import tqdm
+import logging
 
 
 class NeuronAugmentedImagePairDataset(Dataset):
@@ -96,21 +97,27 @@ class NeuronCropImageDataModule(LightningDataModule):
 
 def get_crops_from_project(crop_kwargs, frames, project_data):
     list_of_neurons_of_volumes = []
+    # Get a permutation of the entire dataset
     max_num_frames = project_data.num_frames
     random_sample = random.sample(range(max_num_frames), max_num_frames)
     
     i = 0
-    num_selected_frames = 0
+    selected_frames = []
     with tqdm(total=frames, desc="Sampling frames") as pbar:
-        while i < len(random_sample) and num_selected_frames < frames:
+        while i < len(random_sample):
             t = random_sample[i]
             vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs)
             if len(vol_dat) != 0 and len(vol_dat) <= 200:
                 vol_dat = np.stack(vol_dat, 0)
                 list_of_neurons_of_volumes.append(vol_dat)
-                num_selected_frames += 1
+                selected_frames.append(t)
                 pbar.update(1)  # manually update progress when sample is valid
             i += 1
-    
-    print("Number of frames selected: " + str(len(list_of_neurons_of_volumes)))
+            if len(selected_frames) > frames:
+                break
+        else:
+            logging.warning(f"Requested {frames} frames, but only found {len(selected_frames)} non-empty frames; continuing")
+
+    print("Number of frames selected: " + str(len(selected_frames)))
+    print(selected_frames)
     return list_of_neurons_of_volumes
