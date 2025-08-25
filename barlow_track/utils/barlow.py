@@ -60,18 +60,18 @@ class BarlowTwins3d(nn.Module):
         # Shape of z: neurons x features
         c_features, c_objects = self.calculate_both_correlation_matrices(y1, y2)
         # Original loss
-        loss_original = self.original_barlow_loss(c_features)
+        loss_original = self.loss_from_correlation_matrix(c_features)
 
         # New object loss; use same lambd and additional lambd_obj
         if self.args.lambd_obj == 0:
             loss_transpose = 0
         else:
-            loss_transpose = self.original_barlow_loss(c_objects)
+            loss_transpose = self.loss_from_correlation_matrix(c_objects)
         loss = (1.0-self.args.lambd_obj) * loss_original + self.args.lambd_obj * loss_transpose
 
         return loss, loss_original, loss_transpose
 
-    def original_barlow_loss(self, c_features):
+    def loss_from_correlation_matrix(self, c_features):
         on_diag = torch.diagonal(c_features).add_(-1).pow_(2).sum()
         off_diag = off_diagonal(c_features).pow_(2).sum()
         loss_features = (on_diag + self.args.lambd * off_diag) / c_features.numel()
