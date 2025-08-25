@@ -1,0 +1,34 @@
+# Diff the multiindex dataframes, and calculate the euclidean zxy distance distribution
+import numpy as np
+from scipy.spatial import cKDTree
+
+
+def calculate_distance_diff(df):
+    df = df.copy()
+    dx = df.loc[:, (slice(None), 'x')].diff().values
+    dy = df.loc[:, (slice(None), 'y')].diff().values
+    dz = df.loc[:, (slice(None), 'z')].diff().values
+    distance_distribution = np.sqrt(dx**2 + dy**2 + dz**2)
+    return distance_distribution.flatten()
+
+def calculate_nearest_neighbor_distance(df):
+    # Extract x, y, z positions for all neurons at each time point
+    x = df.loc[:, (slice(None), 'x')].values
+    y = df.loc[:, (slice(None), 'y')].values
+    z = df.loc[:, (slice(None), 'z')].values
+    coords = np.stack([x, y, z], axis=2)  # shape: (frames, neurons, 3)
+
+    mean_distance = []
+    for frame_coords in coords:
+        # Remove neurons with any NaN coordinate in this frame
+        valid = ~np.isnan(frame_coords).any(axis=1)
+        points = frame_coords[valid]
+        if len(points) < 2:
+            mean_distance.append(np.nan)
+            continue
+        # Use cKDTree to find nearest neighbor distances
+        tree = cKDTree(points)
+        dists, _ = tree.query(points, k=2)  # k=2 because the nearest is itself (distance 0)
+        nn_dist = dists[:, 1]  # Take the second column (nearest neighbor, not itself)
+        mean_distance.append(np.mean(nn_dist))
+    return np.array(mean_distance)
