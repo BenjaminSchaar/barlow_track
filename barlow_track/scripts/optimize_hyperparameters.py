@@ -87,7 +87,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         executor.update_parameters(slurm_mem="128G")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
-        executor.update_parameters(slurm_additional_parameters={"no-requeue": None})  # bash equivalent (no-arg flag): #SBATCH --no-requeue
+        executor.update_parameters(slurm_additional_parameters={"no-requeue": True})  # bash equivalent (no-arg flag): #SBATCH --no-requeue
 
     if direct_parameter_sweep:
         # Manually define all the trials as all combinations
