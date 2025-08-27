@@ -138,12 +138,22 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
         # Update every couple of minutes, because these jobs are very slow
         time.sleep(5*60)
 
-    best_parameters, mean_and_variance, best_trial_index, best_trial_name  = ax_client.get_best_parameters()
+    
+    out = ax_client.get_best_parameters()
+    if len(out) == 4:
+        best_parameters, mean_and_variance, best_trial_index, best_trial_name = out
+    elif len(out) == 2:
+        # older versions of Ax return only two values
+        best_parameters, mean_and_variance = out
+        best_trial_index, best_trial_name = None, None
+    else:
+        best_parameters, mean_and_variance, best_trial_index, best_trial_name = None, None, None, None
+        logging.warning(f"Could not unpack best parameters from AxClient.get_best_parameters(); got {out}")
+    
     print(f'Best set of parameters: {best_parameters}')
     print(f'Mean objective value: {mean_and_variance}')
     # The covariance is only meaningful when multiple objectives are present.
-
-    render(ax_client.get_contour_plot())
+    # render(ax_client.get_contour_plot())
 
     # Copy the best parameters and index to a file
     best_params_path = os.path.join(experiment_parent_folder, 'best_parameters.yaml')
