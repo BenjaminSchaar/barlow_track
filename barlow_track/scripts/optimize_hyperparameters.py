@@ -52,7 +52,10 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         # Add the baseline parameters
         args = SimpleNamespace(**parameters)
         test_losses = train_barlow_network(args)
-        return {"result": test_losses['test_loss']}
+        result = test_losses['test_loss']
+        if np.isnan(result):
+            result = 1e6  # More or less infinity
+        return {"result": result}
 
     # Set up the Ax client
     ax_client = AxClient(enforce_sequential_optimization=DEBUG)
