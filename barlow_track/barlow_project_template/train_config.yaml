@@ -51,8 +51,9 @@ epochs: 50
 lr: 0.0001
 
 num_frames: 200
-train_fraction: 0.8
-val_fraction: 0.1
+train_fraction: 0.8  # If > 1, interpreted as number of volumes not a fraction
+val_fraction: 0.1    # If > 1, interpreted as number of volumes not a fraction
+# Remainder is test set
 
 # Hyperparameters for the new (transposed) BarlowTrack loss
 lambd_obj: 0.67  # Set to 0 to not use the transposed loss

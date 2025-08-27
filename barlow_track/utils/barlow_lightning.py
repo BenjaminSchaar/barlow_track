@@ -73,9 +73,12 @@ class NeuronCropImageDataModule(LightningDataModule):
         self.list_of_neurons_of_volumes = list_of_neurons_of_volumes
 
         # transform and split
-        train_fraction = int(len(alldata) * self.train_fraction)
-        val_fraction = int(len(alldata) * self.val_fraction)
-        splits = [train_fraction, val_fraction, len(alldata) - train_fraction - val_fraction]
+        if self.train_fraction < 1.0:
+            train_fraction = int(len(alldata) * self.train_fraction)
+        if self.val_fraction < 1.0:
+            val_fraction = int(len(alldata) * self.val_fraction)
+        test_fraction = len(alldata) - train_fraction - val_fraction
+        splits = [train_fraction, val_fraction, test_fraction]
         trainset, valset, testset = random_split(alldata, splits)
 
         # assign to use in dataloaders
