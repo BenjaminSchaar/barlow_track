@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import time
+import numpy as np
 from pathlib import Path
 from types import SimpleNamespace
 from IPython.core.display_functions import display
@@ -13,11 +14,12 @@ from ax.service.utils.report_utils import exp_to_df
 import yaml  # We are only using this for reading
 from ruamel.yaml import YAML
 from submitit import AutoExecutor, LocalJob, DebugJob
-
+from itertools import product
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
-def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=False):
+def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
+         direct_parameter_sweep=False, DEBUG=False):
     if DEBUG:
         run_locally = True
     if hyperparameter_path is None:
@@ -61,6 +63,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
         parameters=parameters,
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
+    
 
     # Set up SubmitIt
     # Log folder and cluster. Specify cluster='local' or cluster='debug' to run the jobs locally during development.
@@ -82,7 +85,27 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
         executor.update_parameters(slurm_mem="128G")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
-    total_budget = 5 if DEBUG else 30
+
+    if direct_parameter_sweep:
+        # Manually define all the trials
+        for param in parameters:
+            all_param_lists = []
+            if param['type'] == 'choice':
+                assert 'values' in param, "For direct parameter sweep, the parameter must have a list of values"
+                assert 'value_type' not in param, "For direct parameter sweep, the parameter should not have a value_type"
+                # List of lists, which will be combined into a grid
+                all_param_lists.append(param['values'])
+            else:
+                raise ValueError("For direct parameter sweep, all parameters must be of type 'choice'")
+        
+        # Make a grid of all combinations as a dict of parameter name to value
+        all_combinations = list(product(*all_param_lists))
+        all_combinations = [{parameters[i]['name']: v for i, v in enumerate(comb)} for comb in all_combinations]
+        print(f"Running a direct parameter sweep with {len(all_combinations)} combinations")
+        total_budget = len(all_combinations)
+    else:
+        total_budget = 5 if DEBUG else 30
+
     if num_parallel_jobs is None:
         num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
     else:
@@ -103,12 +126,22 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
                 ax_client.complete_trial(trial_index=trial_index, raw_data=result)
                 jobs.remove((job, trial_index))
 
-                # Display the current trials.
+                # Display the current and completed trials
                 display(exp_to_df(ax_client.experiment))
 
         # Schedule new jobs if there is availablity
-        trial_index_to_param, _ = ax_client.get_next_trials(
-            max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
+        if direct_parameter_sweep:
+            # Get a new trial manually, without using the AxClient's internal logic (it can't do a grid search)
+            # Use the submitted_jobs index as the start point of the next batch of trials
+            trial_index_to_param = {}
+            for i in range(submitted_jobs, submitted_jobs + num_parallel_jobs - len(jobs)):
+                trial_index = ax_client.experiment.new_trial()
+                parameters = all_combinations[i]
+                trial_index_to_param[trial_index] = parameters
+        else:
+            trial_index_to_param, _ = ax_client.get_next_trials(
+                max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
+        
         for trial_index, parameters in trial_index_to_param.items():
             # Make a new folder in the parent folder
             # Find a unique folder name by incrementing trial_offset if needed
@@ -134,10 +167,9 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
             time.sleep(1)
 
         # Sleep for a bit before checking the jobs again to avoid overloading the cluster.
-        # If you have a large number of jobs, consider adding a sleep statement in the job polling loop aswell.
-        # Update every couple of minutes, because these jobs are very slow
+        # If you have a large number of jobs, consider adding a sleep statement in the job polling loop as well
+        # Update every couple of minutes, because these jobs are very slow (usually multiple hours)
         time.sleep(5*60)
-
     
     out = ax_client.get_best_parameters()
     if len(out) == 4:
