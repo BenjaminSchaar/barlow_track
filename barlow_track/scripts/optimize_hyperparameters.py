@@ -19,7 +19,7 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
 def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
-         direct_parameter_sweep=False, DEBUG=False):
+         direct_parameter_sweep=False, one_at_a_time_sweep=False, DEBUG=False):
     if DEBUG:
         run_locally = True
     if hyperparameter_path is None:
@@ -90,7 +90,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         executor.update_parameters(slurm_gres="gpu:1")
 
     if direct_parameter_sweep:
-        # Manually define all the trials
+        # Manually define all the trials as all combinations
         for param in parameters:
             all_param_lists = []
             if param['type'] == 'choice':
@@ -104,6 +104,18 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         all_combinations = list(product(*all_param_lists))
         all_combinations = [{parameters[i]['name']: v for i, v in enumerate(comb)} for comb in all_combinations]
         print(f"Running a direct parameter sweep with {len(all_combinations)} combinations")
+        total_budget = len(all_combinations)
+    elif one_at_a_time_sweep:
+        # Define all trials as a sweep of one parameter at a time
+        all_combinations = []
+        for i, param in enumerate(parameters):
+            if param['type'] == 'choice':
+                assert 'values' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values"
+                for v in param['values']:
+                    all_combinations.append({param['name']: v})
+            else:
+                raise ValueError("For one-at-a-time parameter sweep, all parameters must be of type 'choice'")
+        print(f"Running a one-at-a-time parameter sweep with {len(all_combinations)} combinations")
         total_budget = len(all_combinations)
     else:
         total_budget = 5 if DEBUG else 30
@@ -132,7 +144,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
                 display(exp_to_df(ax_client.experiment))
 
         # Schedule new jobs if there is availablity
-        if direct_parameter_sweep:
+        if direct_parameter_sweep or one_at_a_time_sweep:
             # Get a new trial manually, without using the AxClient's internal logic (it can't do a grid search)
             # Use the submitted_jobs index as the start point of the next batch of trials
             trial_index_to_param = {}
@@ -206,6 +218,7 @@ if __name__ == '__main__':
     parser.add_argument('--run_locally', action='store_true')
     parser.add_argument('--num_parallel_jobs', default=None)
     parser.add_argument('--direct_parameter_sweep', action='store_true')
+    parser.add_argument('--one_at_a_time_sweep', action='store_true')
     parser.add_argument('--DEBUG', action='store_true')
 
     args = parser.parse_args()
@@ -215,4 +228,5 @@ if __name__ == '__main__':
     direct_parameter_sweep = args.direct_parameter_sweep
     DEBUG = args.DEBUG
 
-    main(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, DEBUG=DEBUG)
+    main(hyperparameter_template_path, run_locally, num_parallel_jobs, 
+         direct_parameter_sweep, one_at_a_time_sweep, DEBUG=DEBUG)
