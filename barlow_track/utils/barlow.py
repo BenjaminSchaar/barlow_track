@@ -174,7 +174,6 @@ class Transform:
         self.transform = tio.transforms.Compose([
             tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine_base', 1.0)),
             tio.RandomBlur(p=args.get('p_RandomBlur_base', 0.1)),
-            tio.RandomNoise(p=args.get('p_RandomNoise_base', 0.5)),
             self.final_normalization
         ])
         self.transform_prime = transforms.Compose([

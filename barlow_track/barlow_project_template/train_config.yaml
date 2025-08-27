@@ -32,7 +32,6 @@ target_sz_xy: 64
 # First path through the Siamese network
 p_RandomAffine_base: 1.0
 p_RandomBlur_base: 0.1
-p_RandomNoise_base: 0.0
 
 # Second path; default is more augmentation
 p_RandomAffine_flip: 1.0  # A 180 degree rotation, like a flip
