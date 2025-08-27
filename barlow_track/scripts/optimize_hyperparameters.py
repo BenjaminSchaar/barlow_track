@@ -201,12 +201,14 @@ if __name__ == '__main__':
     parser.add_argument('--hyperparameter_template_path', '-p', default=None)
     parser.add_argument('--run_locally', action='store_true')
     parser.add_argument('--num_parallel_jobs', default=None)
+    parser.add_argument('--direct_parameter_sweep', action='store_true')
     parser.add_argument('--DEBUG', action='store_true')
 
     args = parser.parse_args()
     hyperparameter_template_path = args.hyperparameter_template_path
     run_locally = args.run_locally
     num_parallel_jobs = args.num_parallel_jobs
+    direct_parameter_sweep = args.direct_parameter_sweep
     DEBUG = args.DEBUG
 
-    main(hyperparameter_template_path, run_locally, num_parallel_jobs, DEBUG=DEBUG)
+    main(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, DEBUG=DEBUG)
