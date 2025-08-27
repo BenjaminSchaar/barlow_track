@@ -67,7 +67,6 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
     
-
     # Set up SubmitIt
     # Log folder and cluster. Specify cluster='local' or cluster='debug' to run the jobs locally during development.
     # When we're are ready for deployment, switch to cluster='slurm'
@@ -88,6 +87,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         executor.update_parameters(slurm_mem="128G")
         executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
+        executor.update_parameters(additional_parameters={"no-requeue": None})  # bash equivalent (no-arg flag): #SBATCH --no-requeue
 
     if direct_parameter_sweep:
         # Manually define all the trials as all combinations
