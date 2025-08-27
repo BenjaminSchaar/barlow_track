@@ -109,10 +109,14 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         # Define all trials as a sweep of one parameter at a time
         all_combinations = []
         for i, param in enumerate(parameters):
-            if param['type'] in ['choice', 'fixed']:  # fixed is just a choice with one value
-                assert 'values' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values"
+            if param['type'] == 'choice': 
+                assert 'values' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values or a single value"
                 for v in param['values']:
                     all_combinations.append({param['name']: v})
+            elif param['type'] == 'fixed':  # fixed is just a choice with one value
+                # If it has been auto-converted to fixed, it won't have 'values', but just 'value'
+                assert 'value' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values or a single value"
+                all_combinations.append({param['name']: param['value']})
             else:
                 raise ValueError(f"For one-at-a-time parameter sweep, all parameters must be of type 'choice'; got {param['type']} for parameter {param['name']}")
         print(f"Running a one-at-a-time parameter sweep with {len(all_combinations)} combinations")
