@@ -29,6 +29,8 @@ target_sz_z: 8
 target_sz_xy: 64
 
 # Augmentation hyperparameters
+p_RandomAffine_both: # If set, overrides the two below
+
 # First path through the Siamese network
 p_RandomAffine_base: 1.0
 p_RandomBlur_base: 0.1

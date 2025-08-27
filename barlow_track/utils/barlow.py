@@ -166,6 +166,9 @@ class Transform:
             args = dict()
         else:
             args = vars(args)  # Convert from simplenamespace
+            if args.get('p_RandomAffine_both', None) is not None:
+                args['p_RandomAffine_base'] = args['p_RandomAffine_both']
+                args['p_RandomAffine_flip'] = args['p_RandomAffine_both']
 
         # This normalization should get rid of the noise floor (~100) and keep the actual peak values
         self.final_normalization = tio.RescaleIntensity(percentiles=(5, 100))
