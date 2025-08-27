@@ -109,7 +109,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         # Define all trials as a sweep of one parameter at a time
         all_combinations = []
         for i, param in enumerate(parameters):
-            if param['type'] == 'choice':
+            if param['type'] in ['choice', 'fixed']:  # fixed is just a choice with one value
                 assert 'values' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values"
                 for v in param['values']:
                     all_combinations.append({param['name']: v})
