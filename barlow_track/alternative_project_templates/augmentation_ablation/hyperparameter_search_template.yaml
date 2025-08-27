@@ -1,4 +1,5 @@
-# Template for hyperparameter search configuration file
+# Template for searching through augmentation ablations
+# Should be used with --one_at_a_time_sweep flag in optimize_hyperparameters.py
 
 baseline_params_path: null
 

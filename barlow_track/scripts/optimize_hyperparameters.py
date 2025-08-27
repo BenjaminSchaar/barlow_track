@@ -226,6 +226,7 @@ if __name__ == '__main__':
     run_locally = args.run_locally
     num_parallel_jobs = args.num_parallel_jobs
     direct_parameter_sweep = args.direct_parameter_sweep
+    one_at_a_time_sweep = args.one_at_a_time_sweep
     DEBUG = args.DEBUG
 
     main(hyperparameter_template_path, run_locally, num_parallel_jobs, 
