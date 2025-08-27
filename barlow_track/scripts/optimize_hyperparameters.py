@@ -139,9 +139,9 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
             for i in range(submitted_jobs, submitted_jobs + num_parallel_jobs - len(jobs)):
                 if i >= total_budget - 1:
                     break
-                trial_index = ax_client.experiment.new_trial()
+                trial = ax_client.experiment.new_trial()
                 parameters = all_combinations[i]
-                trial_index_to_param[trial_index] = parameters
+                trial_index_to_param[trial.index] = parameters
         else:
             trial_index_to_param, _ = ax_client.get_next_trials(
                 max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
