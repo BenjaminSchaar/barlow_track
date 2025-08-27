@@ -114,7 +114,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
                 for v in param['values']:
                     all_combinations.append({param['name']: v})
             else:
-                raise ValueError("For one-at-a-time parameter sweep, all parameters must be of type 'choice'")
+                raise ValueError(f"For one-at-a-time parameter sweep, all parameters must be of type 'choice'; got {param['type']} for parameter {param['name']}")
         print(f"Running a one-at-a-time parameter sweep with {len(all_combinations)} combinations")
         total_budget = len(all_combinations)
     else:
