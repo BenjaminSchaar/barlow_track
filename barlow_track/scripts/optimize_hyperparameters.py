@@ -95,7 +95,6 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
             all_param_lists = []
             if param['type'] == 'choice':
                 assert 'values' in param, "For direct parameter sweep, the parameter must have a list of values"
-                assert 'value_type' not in param, "For direct parameter sweep, the parameter should not have a value_type"
                 # List of lists, which will be combined into a grid
                 all_param_lists.append(param['values'])
             else:
