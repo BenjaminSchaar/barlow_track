@@ -141,7 +141,14 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
             if job.done() or type(job) in [LocalJob, DebugJob]:
                 # The log file isn't being produced, so print the stdout instead
                 result = job.result()
-                ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+                try:
+                    ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+                except ValueError as e:
+                    if direct_parameter_sweep or one_at_a_time_sweep:
+                        # We are manually managing the trials, so this is expected
+                        pass
+                    else:
+                        raise e
                 jobs.remove((job, trial_index))
 
                 # Display the current and completed trials
