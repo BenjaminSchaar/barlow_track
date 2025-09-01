@@ -1,11 +1,14 @@
 import argparse
+import json
 import logging
 import os
+import re
 import pandas as pd
 import numpy as np
 from tqdm.auto import tqdm
 from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching
+import yaml
 
 
 def pad_with_nan_rows(df: pd.DataFrame, target_length: int) -> pd.DataFrame:
@@ -128,7 +131,7 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
     """
     try:
         # Load result data
-        project_data_res = ProjectData.load_final_project_data(res_file)
+        project_data_res = ProjectData.load_final_project_data(res_file, verbose=0)
         df_res = project_data_res.final_tracks
 
         # Match lengths
@@ -154,11 +157,46 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
         return {"trial": trial, "error": str(e)}
 
 
-def build_accuracy_dict(gt_path, result_dir):
+def discover_trials(trial_parent_dir):
+    """
+    Discovers trial numbers from folders named 'trial_<number>' in the given directory.
+    """
+    trials = []
+    for entry in os.listdir(trial_parent_dir):
+        entry_path = os.path.join(trial_parent_dir, entry)
+        if os.path.isdir(entry_path) and entry.startswith("trial_"):
+            match = re.match(r"trial_(\d+)", entry)
+            if match:
+                trials.append(int(match.group(1)))
+    return sorted(trials)
+
+
+def extract_val_loss(trial_path):
+    stats_path = os.path.join(trial_path, "log", "stats.json")
+    if not os.path.isfile(stats_path):
+        print(f"No stats.json found at {stats_path}")
+        return None
+
+    try:
+        with open(stats_path, "r") as f:
+            stats = json.load(f)
+        if len(stats) >= 2 and "val_loss" in stats[-2]:
+            return stats[-2]["val_loss"]
+        else:
+            print(f"{stats_path} too short or missing 'val_loss'")
+            return None
+    except Exception as e:
+        print(f"Error reading {stats_path}: {e}")
+        return None
+
+
+def build_accuracy_dict(gt_path, project_dir, trial_dir):
     """
     Build a dictionary of accuracy metrics for all trials in the result directory.
-    Assumes that each trial in the result_dir is based on the same ground truth data.
+    Assumes that each trial in the trial_dir is based on the same ground truth data.
+    Further assumes that each project in the project_dir is named after its trial.
     """
+
     # Load GT once
     project_data_gt = ProjectData.load_final_project_data(gt_path)
     df_gt, finished_neurons = project_data_gt.get_final_tracks_only_finished_neurons()
@@ -167,9 +205,23 @@ def build_accuracy_dict(gt_path, result_dir):
         df_gt = project_data_gt.final_tracks
 
     result_dict = {
-        "hyperparams": [],
         "trial": [],
+        "projector_final": [],
+        "embedding_dim": [],
+        "target_sz_z": [],
+        "target_sz_xy": [],
+        "p_RandomAffine_flip": [],
+        "p_RandomAffine_base": [],
+        "p_RandomAffine": [],
+        "p_RandomElasticDeformation": [],
+        "p_RandomBlur_base": [],
+        "p_RandomNoise": [],
+        "val_loss": [],
+        "lr": [],
         "accuracy": [],
+        "training_fraction": []
+    }
+    detailed_result_dict = {
         "per_neuron_accuracy": [],
         "per_timepoint_accuracy": [],
         "misses_per_neuron_norm": [],
@@ -177,33 +229,54 @@ def build_accuracy_dict(gt_path, result_dir):
         "mismatches_per_neuron_norm": [],
         "mismatches_per_timepoint_norm": [],
     }
+    trials = discover_trials(trial_dir)
 
-    trial_num = 0
-    for entry in tqdm(os.listdir(result_dir)):
-        
-        result_path = os.path.join(result_dir, entry, "project_config.yaml")
+    # Map trials to folder names within project_dir
+    all_project_dirs = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
+    trial_to_project_map = {int(d.split("_")[-1]): d for d in all_project_dirs if "trial_" in d}
+
+    for trial_num in trials:
+        trial_name = f"trial_{trial_num}"
+        trial_name_config = f"trial_{trial_num}"
+        trial_path = os.path.join(trial_dir, trial_name_config)
+        project_path = os.path.join(project_dir, trial_to_project_map[trial_num], "project_config.yaml")
+        network_config_path = os.path.join(trial_path, "train_config.yaml")
+
+        if not os.path.isfile(network_config_path):
+            print(f"{trial_name}: train_config.yaml not found.")
+            continue
 
         try:
-            if os.path.isfile(result_path):
-                stats = process_trial(trial_num, df_gt, result_path)
-                result_dict["hyperparams"].append(str(entry))
+            with open(network_config_path, "r") as f:
+                config = yaml.safe_load(f)
+
+            result_dict["trial"].append(trial_num)
+            for k in result_dict.keys():
+                if k in ["trial", "accuracy", "val_loss"]:
+                    continue
+                result_dict[k].append(config.get(k))
+
+            val_loss = extract_val_loss(trial_path)
+            result_dict["val_loss"].append(val_loss)
+
+            if os.path.isfile(project_path):
+                # print("Processing trials")
+                stats = process_trial(trial_num, df_gt, project_path)
+                # print(stats)
                 result_dict["accuracy"].append(stats.get("accuracy"))
-                result_dict["per_neuron_accuracy"].append(stats.get("accuracy_per_neuron"))
-                result_dict["per_timepoint_accuracy"].append(stats.get("accuracy_per_timepoint"))
-                result_dict["misses_per_neuron_norm"].append(stats.get("misses_per_neuron_norm"))
-                result_dict["misses_per_timepoint_norm"].append(stats.get("misses_per_timepoint_norm"))
-                result_dict["mismatches_per_neuron_norm"].append(stats.get("mismatches_per_neuron_norm"))
-                result_dict["mismatches_per_timepoint_norm"].append(stats.get("mismatches_per_timepoint_norm"))
+                
+                for k in detailed_result_dict.keys():
+                    detailed_result_dict[k].append(stats.get(k))
             else:
-                print(f"{entry}: project_config.yaml not found.")
+                print(f"{trial_name}: project_config.yaml not found.")
                 result_dict["accuracy"].append(None)
-                result_dict["per_neuron_accuracy"].append(None)
-                result_dict["per_timepoint_accuracy"].append(None)
+                detailed_result_dict["per_neuron_accuracy"].append(None)
+                detailed_result_dict["per_timepoint_accuracy"].append(None)
 
         except Exception as e:
-            print(f"{entry}: ERROR -> {e}")
+            print(f"{trial_name}: ERROR -> {e}")
 
-    return result_dict
+    return result_dict, detailed_result_dict
 
 
 def main():
