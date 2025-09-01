@@ -212,6 +212,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
         "target_sz_xy": [],
         "p_RandomAffine_flip": [],
         "p_RandomAffine_base": [],
+        "p_RandomAffine_both": [],
         "p_RandomAffine": [],
         "p_RandomElasticDeformation": [],
         "p_RandomBlur_base": [],
