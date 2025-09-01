@@ -1,7 +1,9 @@
 import argparse
+import logging
 import os
 import pandas as pd
 import numpy as np
+from tqdm.auto import tqdm
 from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching
 
@@ -150,6 +152,58 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
     except Exception as e:
         print(f"Trial {trial}: ERROR during processing -> {e}")
         return {"trial": trial, "error": str(e)}
+
+
+def build_accuracy_dict(gt_path, result_dir):
+    """
+    Build a dictionary of accuracy metrics for all trials in the result directory.
+    Assumes that each trial in the result_dir is based on the same ground truth data.
+    """
+    # Load GT once
+    project_data_gt = ProjectData.load_final_project_data(gt_path)
+    df_gt, finished_neurons = project_data_gt.get_final_tracks_only_finished_neurons()
+    if df_gt is None:
+        logging.warning("No finished neurons found in ground truth data, assuming all neurons are ground truth.")
+        df_gt = project_data_gt.final_tracks
+
+    result_dict = {
+        "hyperparams": [],
+        "trial": [],
+        "accuracy": [],
+        "per_neuron_accuracy": [],
+        "per_timepoint_accuracy": [],
+        "misses_per_neuron_norm": [],
+        "misses_per_timepoint_norm": [],
+        "mismatches_per_neuron_norm": [],
+        "mismatches_per_timepoint_norm": [],
+    }
+
+    trial_num = 0
+    for entry in tqdm(os.listdir(result_dir)):
+        
+        result_path = os.path.join(result_dir, entry, "project_config.yaml")
+
+        try:
+            if os.path.isfile(result_path):
+                stats = process_trial(trial_num, df_gt, result_path)
+                result_dict["hyperparams"].append(str(entry))
+                result_dict["accuracy"].append(stats.get("accuracy"))
+                result_dict["per_neuron_accuracy"].append(stats.get("accuracy_per_neuron"))
+                result_dict["per_timepoint_accuracy"].append(stats.get("accuracy_per_timepoint"))
+                result_dict["misses_per_neuron_norm"].append(stats.get("misses_per_neuron_norm"))
+                result_dict["misses_per_timepoint_norm"].append(stats.get("misses_per_timepoint_norm"))
+                result_dict["mismatches_per_neuron_norm"].append(stats.get("mismatches_per_neuron_norm"))
+                result_dict["mismatches_per_timepoint_norm"].append(stats.get("mismatches_per_timepoint_norm"))
+            else:
+                print(f"{entry}: project_config.yaml not found.")
+                result_dict["accuracy"].append(None)
+                result_dict["per_neuron_accuracy"].append(None)
+                result_dict["per_timepoint_accuracy"].append(None)
+
+        except Exception as e:
+            print(f"{entry}: ERROR -> {e}")
+
+    return result_dict
 
 
 def main():
