@@ -132,6 +132,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
     jobs = []
     submitted_jobs = 0
     trial_offset = 0
+    start_time = time.time()
 
     # Run until all the jobs have finished and our budget is used up.
     while submitted_jobs < total_budget or jobs:
@@ -146,7 +147,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
                 except ValueError as e:
                     if direct_parameter_sweep or one_at_a_time_sweep:
                         # We are manually managing the trials, so this is expected
-                        pass
+                        print(f"Encountered error in finishing trial {trial_index}, this is expected but may be fixable; {e}")
                     else:
                         raise e
                 jobs.remove((job, trial_index))
@@ -158,9 +159,10 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         if direct_parameter_sweep or one_at_a_time_sweep:
             # Get a new trial manually, without using the AxClient's internal logic (it can't do a grid search)
             # Use the submitted_jobs index as the start point of the next batch of trials
+
             trial_index_to_param = {}
             for i in range(submitted_jobs, submitted_jobs + num_parallel_jobs - len(jobs)):
-                if i >= total_budget - 1:
+                if i >= total_budget:
                     break
                 trial = ax_client.experiment.new_trial()
                 parameters = all_combinations[i]
@@ -197,7 +199,8 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         # If you have a large number of jobs, consider adding a sleep statement in the job polling loop as well
         # Update every couple of minutes, because these jobs are very slow (usually multiple hours)
         time.sleep(5*60)
-    
+        print(f"Time={time.time()-start_time}. Checking status of {len(jobs)} jobs; {submitted_jobs}/{total_budget} submitted")
+
     out = ax_client.get_best_parameters()
     if len(out) == 4:
         best_parameters, mean_and_variance, best_trial_index, best_trial_name = out
