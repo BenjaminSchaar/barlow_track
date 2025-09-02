@@ -38,4 +38,4 @@ def calculate_nearest_neighbor_distance(df):
 
 BASE_COLORMAP = plotly.colors.qualitative.D3
 def paper_colormap():
-    return {'Zimmer': BASE_COLORMAP[0], 'Samuel': BASE_COLORMAP[1], 'Flavell': BASE_COLORMAP[2]}
+    return {'Zimmer': BASE_COLORMAP[0], 'Samuel': BASE_COLORMAP[2], 'Flavell': BASE_COLORMAP[1]}
