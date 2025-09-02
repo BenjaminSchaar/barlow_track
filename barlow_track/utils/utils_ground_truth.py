@@ -133,6 +133,9 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
         # Load result data
         project_data_res = ProjectData.load_final_project_data(res_file, verbose=0)
         df_res = project_data_res.final_tracks
+        if df_res is None:
+            print(f"{trial}: No final tracks found in {res_file}")
+            return {"trial": trial, "error": "No final tracks found"}
 
         # Match lengths
         max_len = max(len(df_res), len(df_gt))
@@ -152,7 +155,7 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
         stats["trial"] = trial
         return stats
 
-    except Exception as e:
+    except KeyError as e:
         print(f"Trial {trial}: ERROR during processing -> {e}")
         return {"trial": trial, "error": str(e)}
 
@@ -200,7 +203,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
     # Load GT once
     project_data_gt = ProjectData.load_final_project_data(gt_path)
     df_gt, finished_neurons = project_data_gt.get_final_tracks_only_finished_neurons()
-    if df_gt is None:
+    if df_gt is None or df_gt.empty:
         logging.warning("No finished neurons found in ground truth data, assuming all neurons are ground truth.")
         df_gt = project_data_gt.final_tracks
 
@@ -278,7 +281,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
                 detailed_result_dict["per_neuron_accuracy"].append(None)
                 detailed_result_dict["per_timepoint_accuracy"].append(None)
 
-        except Exception as e:
+        except ValueError as e:
             print(f"{trial_name}: ERROR -> {e}")
 
     return result_dict, detailed_result_dict
