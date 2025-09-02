@@ -198,7 +198,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None,
         # Sleep for a bit before checking the jobs again to avoid overloading the cluster.
         # If you have a large number of jobs, consider adding a sleep statement in the job polling loop as well
         # Update every couple of minutes, because these jobs are very slow (usually multiple hours)
-        time.sleep(5*60)
+        time.sleep(10*60)
         print(f"Time={time.time()-start_time}. Checking status of {len(jobs)} jobs; {submitted_jobs}/{total_budget} submitted")
 
     out = ax_client.get_best_parameters()
