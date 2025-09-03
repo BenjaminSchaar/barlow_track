@@ -506,3 +506,11 @@ class WormClusterTracker:
 #     # Save
 #     fname = "3-tracking/postprocessing/df_cluster_tracker.h5"
 #     tracking_config.save_data_in_local_project(fname, df_combined, also_save_csv=True)
+
+
+def get_target_size_from_args(args):
+    try:
+        target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
+    except AttributeError:
+        target_sz = np.array(args.target_sz)
+    return target_sz

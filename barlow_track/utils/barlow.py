@@ -1,6 +1,7 @@
 # From: http://proceedings.mlr.press/v139/zbontar21a/zbontar21a.pdf
 import concurrent.futures
 import gc
+from operator import is_
 from pathlib import Path
 import numpy as np
 import torch
@@ -349,6 +350,8 @@ def load_barlow_model(model_fname):
     Loads a model directly from the weights file, and assumes the args are saved in the same folder as args.pickle
 
     """
+    if model_fname is None or not Path(model_fname).exists():
+        raise FileNotFoundError(f"Model file not found: {model_fname}")
     from barlow_track.utils.siamese import ResidualEncoder3D
     state_dict = torch.load(model_fname)
     if state_dict.get('model', None) is not None:
