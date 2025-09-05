@@ -57,7 +57,7 @@ val_fraction: 0.1    # If > 1, interpreted as number of volumes not a fraction
 # Remainder is test set
 
 # Hyperparameters for the new (transposed) BarlowTrack loss
-lambd_obj: 0.67  # Set to 0 to not use the transposed loss
+lambd_obj: 0.67  # Set to 1 to only use the transposed loss
 
 # Debugging and logging parameters
 print_freq: 100
