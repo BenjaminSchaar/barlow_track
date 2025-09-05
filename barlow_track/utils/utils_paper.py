@@ -1,5 +1,6 @@
 # Diff the multiindex dataframes, and calculate the euclidean zxy distance distribution
 import numpy as np
+import plotly
 from scipy.spatial import cKDTree
 
 
@@ -10,6 +11,7 @@ def calculate_distance_diff(df):
     dz = df.loc[:, (slice(None), 'z')].diff().values
     distance_distribution = np.sqrt(dx**2 + dy**2 + dz**2)
     return distance_distribution.flatten()
+
 
 def calculate_nearest_neighbor_distance(df):
     # Extract x, y, z positions for all neurons at each time point
@@ -32,3 +34,8 @@ def calculate_nearest_neighbor_distance(df):
         nn_dist = dists[:, 1]  # Take the second column (nearest neighbor, not itself)
         mean_distance.append(np.mean(nn_dist))
     return np.array(mean_distance)
+
+
+BASE_COLORMAP = plotly.colors.qualitative.D3
+def paper_colormap():
+    return {'Zimmer': BASE_COLORMAP[0], 'Samuel': BASE_COLORMAP[2], 'Flavell': BASE_COLORMAP[1]}

@@ -484,25 +484,9 @@ class WormClusterTracker:
         return df_global
 
 
-# def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
-#     """
-#     Uses tsne + hdbscan clusters on neuron feature space as a tracker
-#
-#     Parameters
-#     ----------
-#     project_config
-#
-#     Returns
-#     -------
-#
-#     """
-#
-#     tracking_config = project_config.get_tracking_config()
-#
-#     # Track
-#     tracker = WormTsneTracker.load_from_config(project_config)
-#     df_combined, all_raw_dfs = tracker.track_using_overlapping_windows()
-#
-#     # Save
-#     fname = "3-tracking/postprocessing/df_cluster_tracker.h5"
-#     tracking_config.save_data_in_local_project(fname, df_combined, also_save_csv=True)
+def get_target_size_from_args(args):
+    try:
+        target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
+    except AttributeError:
+        target_sz = np.array(args.target_sz)
+    return target_sz

@@ -21,7 +21,7 @@ from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.general.utils_filenames import pickle_load_binary
 from wbfm.utils.external.utils_neuron_names import name2int_neuron_and_tracklet
 from wbfm.utils.projects.utils_redo_steps import add_metadata_to_df_raw_ind
-from barlow_track.utils.utils_tracking import WormClusterTracker
+from barlow_track.utils.utils_tracking import WormClusterTracker, get_target_size_from_args
 
 
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
@@ -115,10 +115,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
 
         gpu, model, args = load_barlow_model(fname)
-        try:
-            target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
-        except AttributeError:
-            target_sz = np.array(args.target_sz)
+        target_sz = get_target_size_from_args(args)
         model.eval()
 
         # Embed using the model
