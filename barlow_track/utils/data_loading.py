@@ -84,7 +84,7 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
             else:
                 # Make a unique name for this untracked object, but keep the correct label
                 ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
-                this_name = f"untracked_time_{t}_{ind_in_list}_{this_seg_label}"
+                this_name = f"untracked_time_{t}_{ind_in_list:04d}_{this_seg_label:04d}"
         zxy = [row['z'], row['x'], row['y']]
         # Repeat to be zxyzxy
         zxyzxy = [zxy[0], zxy[1], zxy[2], zxy[0], zxy[1], zxy[2]]
