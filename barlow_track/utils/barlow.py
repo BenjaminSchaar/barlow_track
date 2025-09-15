@@ -60,14 +60,16 @@ class BarlowTwins3d(nn.Module):
     def forward(self, y1, y2):
         # Shape of z: neurons x features
         c_features, c_objects = self.calculate_both_correlation_matrices(y1, y2)
-        # Original loss
-        loss_original = self.loss_from_correlation_matrix(c_features)
-
-        # New object loss; use same lambd and additional lambd_obj
-        if self.args.lambd_obj == 0:
-            loss_transpose = 0
-        else:
+        
+        loss_transpose = torch.tensor(0.0, device=y1.device)
+        loss_original = torch.tensor(0.0, device=y1.device)
+        if self.args.lambd_obj < 1:
+            # Original loss
+            loss_original = self.loss_from_correlation_matrix(c_features)
+        if self.args.lambd_obj > 0:
+            # New object loss; use same lambd to combine on and off diagonal
             loss_transpose = self.loss_from_correlation_matrix(c_objects)
+        
         loss = (1.0-self.args.lambd_obj) * loss_original + self.args.lambd_obj * loss_transpose
 
         return loss, loss_original, loss_transpose
