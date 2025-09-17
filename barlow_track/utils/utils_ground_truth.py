@@ -246,7 +246,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
         trial_path = os.path.join(trial_dir, trial_name_config)
         project_path = trial_to_project_map.get(trial_num, None)
         if project_path is None:
-            print(f"{trial_name}: No matching project directory found in {project_dir}; probably the traces have not yet been analyzed")
+            print(f"{trial_name}: No matching project directory found in {project_dir} for trial {trial_num}; probably the traces have not yet been analyzed")
             continue
         project_path = os.path.join(project_dir, project_path, "project_config.yaml")
         network_config_path = os.path.join(trial_path, "train_config.yaml")
