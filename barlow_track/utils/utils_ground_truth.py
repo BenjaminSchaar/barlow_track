@@ -201,7 +201,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
     """
 
     # Load GT once
-    project_data_gt = ProjectData.load_final_project_data(gt_path)
+    project_data_gt = ProjectData.load_final_project_data(gt_path, verbose=0)
     df_gt, finished_neurons = project_data_gt.get_final_tracks_only_finished_neurons()
     if df_gt is None or df_gt.empty:
         logging.warning("No finished neurons found in ground truth data, assuming all neurons are ground truth.")
@@ -222,6 +222,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
         "p_RandomNoise": [],
         "val_loss": [],
         "lr": [],
+        "lambd_obj": [],
         "accuracy": [],
         "training_fraction": []
     }
