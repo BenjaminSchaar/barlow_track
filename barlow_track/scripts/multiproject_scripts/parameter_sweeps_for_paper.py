@@ -25,7 +25,7 @@ if __name__ == "__main__":
         one_at_a_time_sweep = True
 
         p = Process(target=optimize_hyperparameters, 
-                    args=(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, DEBUG))
+                    args=(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, dir, DEBUG))
         p.start()
         all_p.append(p)
         
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         one_at_a_time_sweep = False
         
         p = Process(target=optimize_hyperparameters, 
-                    args=(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, DEBUG))
+                    args=(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, dir, DEBUG))
         p.start()
         all_p.append(p)
     

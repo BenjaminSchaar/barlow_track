@@ -19,7 +19,7 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
 def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
-         direct_parameter_sweep=False, one_at_a_time_sweep=False, DEBUG=False):
+         direct_parameter_sweep=False, one_at_a_time_sweep=False, job_name=None, DEBUG=False):
     if DEBUG:
         run_locally = True
     if hyperparameter_path is None:
@@ -85,8 +85,9 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
         executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
         executor.update_parameters(cpus_per_task=16)
         executor.update_parameters(slurm_mem="128G")
-        executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
+        executor.update_parameters(slurm_job_name=job_name if job_name is not None else "barlow_hyperparameter_search")
         executor.update_parameters(slurm_gres="gpu:1")
+        executor.update_parameters(slurm_constraint="l40s|a30|t4|v100|l4")
         executor.update_parameters(slurm_additional_parameters={"no-requeue": True})  # bash equivalent (no-arg flag): #SBATCH --no-requeue
 
     if direct_parameter_sweep:
@@ -233,6 +234,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_parallel_jobs', default=None)
     parser.add_argument('--direct_parameter_sweep', action='store_true')
     parser.add_argument('--one_at_a_time_sweep', action='store_true')
+    parser.add_argument('--job_name', default=None)
     parser.add_argument('--DEBUG', action='store_true')
 
     args = parser.parse_args()
@@ -241,7 +243,8 @@ if __name__ == '__main__':
     num_parallel_jobs = args.num_parallel_jobs
     direct_parameter_sweep = args.direct_parameter_sweep
     one_at_a_time_sweep = args.one_at_a_time_sweep
+    job_name = args.job_name
     DEBUG = args.DEBUG
 
     optimize_hyperparameters(hyperparameter_template_path, run_locally, num_parallel_jobs, 
-         direct_parameter_sweep, one_at_a_time_sweep, DEBUG=DEBUG)
+         direct_parameter_sweep, one_at_a_time_sweep, job_name, DEBUG=DEBUG)
