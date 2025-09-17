@@ -18,7 +18,7 @@ from itertools import product
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
-def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
+def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
          direct_parameter_sweep=False, one_at_a_time_sweep=False, DEBUG=False):
     if DEBUG:
         run_locally = True
@@ -243,5 +243,5 @@ if __name__ == '__main__':
     one_at_a_time_sweep = args.one_at_a_time_sweep
     DEBUG = args.DEBUG
 
-    main(hyperparameter_template_path, run_locally, num_parallel_jobs, 
+    optimize_hyperparameters(hyperparameter_template_path, run_locally, num_parallel_jobs, 
          direct_parameter_sweep, one_at_a_time_sweep, DEBUG=DEBUG)
