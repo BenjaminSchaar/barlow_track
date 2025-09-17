@@ -1,6 +1,8 @@
 
 
 import os
+
+import tqdm
 from barlow_track.scripts.optimize_hyperparameters import optimize_hyperparameters
 from multiprocessing import Process
 
@@ -23,7 +25,7 @@ if __name__ == "__main__":
         one_at_a_time_sweep = True
 
         p = Process(target=optimize_hyperparameters, 
-                    args=(run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, DEBUG))
+                    args=(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, DEBUG))
         p.start()
         all_p.append(p)
         
@@ -34,9 +36,9 @@ if __name__ == "__main__":
         one_at_a_time_sweep = False
         
         p = Process(target=optimize_hyperparameters, 
-                    args=(run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, DEBUG))
+                    args=(hyperparameter_template_path, run_locally, num_parallel_jobs, direct_parameter_sweep, one_at_a_time_sweep, DEBUG))
         p.start()
         all_p.append(p)
     
-    for p in enumerate(all_p, desc="Joining processes (these may hang)"):
+    for p in tqdm(all_p, desc="Joining processes (these may hang)"):
         p.join()
