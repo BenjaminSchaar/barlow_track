@@ -17,6 +17,7 @@ if __name__ == "__main__":
     all_p = []
 
     for dir in sweep_dirs:
+        print(f"Submitting job for {dir}")
         hyperparameter_template_path = os.path.join(parent_dir, dir, 'hyperparameter_search_template.yaml')
         direct_parameter_sweep = False
         one_at_a_time_sweep = True
@@ -27,6 +28,7 @@ if __name__ == "__main__":
         all_p.append(p)
         
     for dir in augmentation_dirs:
+        print(f"Submitting job for {dir}")
         hyperparameter_template_path = os.path.join(parent_dir, dir, 'hyperparameter_search_template.yaml')
         direct_parameter_sweep = True
         one_at_a_time_sweep = False
@@ -38,4 +40,3 @@ if __name__ == "__main__":
     
     for p in enumerate(all_p, desc="Joining processes (these may hang)"):
         p.join()
-        
