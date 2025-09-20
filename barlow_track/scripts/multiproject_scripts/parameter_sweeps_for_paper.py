@@ -10,7 +10,7 @@ from multiprocessing import Process
 if __name__ == "__main__":
     parent_dir = "/lisc/data/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/"
 
-    sweep_dirs = ['training_data_sweep_zimmer', 'training_data_sweep_flavell', 'training_data_sweep_samuel']
+    sweep_dirs = []#'training_data_sweep_zimmer', 'training_data_sweep_flavell', 'training_data_sweep_samuel']
     augmentation_dirs = ['augmentation_sweep_zimmer', 'augmentation_sweep_flavell', 'augmentation_sweep_samuel']
     
     run_locally = False
