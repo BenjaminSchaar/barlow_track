@@ -19,7 +19,19 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
 def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
-         direct_parameter_sweep=False, one_at_a_time_sweep=False, job_name=None, DEBUG=False):
+                             direct_parameter_sweep=False, one_at_a_time_sweep=False, 
+                             job_name=None, DEBUG=False):
+    """
+    Parameters
+    ---------------------
+    hyperparameter_path - Path to the yaml file, usually named hyperparameter_search_template.yaml
+    run_locally - Instead of the cluster, via slurm
+    num_parallel_jobs
+    direct_parameter_sweep - Generate runs as all combinations of parameters instead of optimizing (e.g. for grid search)
+    one_at_a_time_sweep - Generate runs by using only one of the hyperparameter changes at a time; the rest are defaults (e.g. for ablations)
+    job_name - SLURM job name
+
+    """
     if DEBUG:
         run_locally = True
     if hyperparameter_path is None:
