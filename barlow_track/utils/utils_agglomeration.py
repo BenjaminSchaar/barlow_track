@@ -34,6 +34,7 @@ After running you can inspect:
 - unassigned points (neither assigned nor outlier) = set(range(n_points)) - assigned_map.keys() - outliers
 """
 
+from cProfile import label
 from typing import Dict, List, Tuple, Set, Iterable, Optional
 import numpy as np
 import pandas as pd
@@ -47,7 +48,7 @@ def compute_time_purity_for_indices(indices: Iterable[int],
                                     linear_ind_to_t_and_seg_id: Dict[int, Tuple],
                                     clusterer,
                                     assigned_indices: Optional[Set[int]] = None,
-                                   max_size=None):
+                                    max_size=None):
     """
     For a set of indices (raw cluster candidate), compute:
       - kept_indices: enforce strict one-per-time by selecting the single highest-confidence
@@ -132,7 +133,7 @@ def compute_time_purity_for_indices(indices: Iterable[int],
 
 
 def initialize_timepoint_seeds_with_prior(
-    clusterer, time_index_to_linear_feature_indices, template_timepoint, cluster_label2node, t_max, G, assigned_index_to_cluster={}
+    clusterer, time_index_to_linear_feature_indices, linear_ind_to_t_and_seg_id, template_timepoint, cluster_label2node, t_max, G, leaves_under, assigned_index_to_cluster={}
 ):
     """
     Initialize seeds from a single template time point, skipping:
@@ -157,7 +158,6 @@ def initialize_timepoint_seeds_with_prior(
     """
     labels = clusterer.labels_
     seeds = {}
-    used_cluster_ids = set()
 
     linear_idx = time_index_to_linear_feature_indices[template_timepoint]
     num_leaves, num_hdbscan, num_maximal = 0, 0, 0
@@ -167,16 +167,31 @@ def initialize_timepoint_seeds_with_prior(
             num_maximal += 1
             continue  # skip points already part of maximal clusters
 
-        if labels[idx] > 0:            
-            # Already has an hdbscan cluster
+        if labels[idx] > 0:
+            # Already has an hdbscan cluster, but need to check if it's good
             start_node = cluster_label2node[labels[idx]]
-            cluster_size = np.sum(clusterer.labels_ == labels[idx])
+            idx_boolean = clusterer.labels_ == labels[idx]
+            # start_indices = leaves_under[start_node]
+            
+            cluster_size = np.sum(idx_boolean)
+            # assert len(start_indices) == cluster_size, "Size calculation from labels and nodes is different!"
+
             if cluster_size > t_max:
                 print(f"Found very large hdbscan cluster ({cluster_size}; label={labels[idx]}), trying to find better starting from leaf")
                 start_node = idx
                 num_leaves += 1
             else:
-                num_hdbscan += 1
+                start_indices = np.where(idx_boolean)[0]
+                kept_indices, purity, time_map = compute_time_purity_for_indices(start_indices,
+                                                                                 linear_ind_to_t_and_seg_id,
+                                                                                 clusterer,
+                                                                                 assigned_indices=set(assigned_index_to_cluster.keys()))
+                if purity < 0.8:
+                    print(f"Found very impure hdbscan cluster ({purity}; label={labels[idx]}), trying to find better starting from leaf")
+                    start_node = idx
+                    num_leaves += 1
+                else:
+                    num_hdbscan += 1
         else:
             # Is a leaf; the idx is the same in the graph
             start_node = idx
@@ -187,7 +202,7 @@ def initialize_timepoint_seeds_with_prior(
         ancestors.append(start_node)  # include self
         seeds[idx] = {'start_node': start_node, 'ancestors': ancestors, 'original_label': labels[idx]}
 
-    print(f"Found seeds at time {template_timepoint}: leaves: {num_leaves}; maximal: {num_maximal}; hdbscan: {num_hdbscan}")
+    print(f"Found {len(seeds)} seeds at time {template_timepoint}: leaves: {num_leaves}; hdbscan: {num_hdbscan}; maximal (will not check): {num_maximal}")
     return seeds
 
 
@@ -198,6 +213,7 @@ def agglomerate_by_time_purity(clusterer,
                                linear_ind_to_t_and_seg_id: Dict[int, Tuple],
                                time_index_to_linear_feature_indices: Dict[int, List[int]],
                                min_kept_size: int = 2,
+                               patience=5,
                                eps_purity_increase: float = 1e-6,
                               min_purity=0.5):
     """
@@ -255,11 +271,14 @@ def agglomerate_by_time_purity(clusterer,
     
     timepoints = list(time_index_to_linear_feature_indices.keys())
     random.shuffle(timepoints)
+    max_initial_cluster_size = 1.2*len(timepoints)
     # timepoints = sorted(list(time_index_to_linear_feature_indices.keys()),
     #                     key=lambda t: len(time_index_to_linear_feature_indices[t]),
     #                     reverse=True)
 
-    cluster_counter = 0
+    current_cluster_label = len(np.unique(clusterer.labels_))
+    used_cluster_labels = []
+    print(f"Initial number of unique clusters: {current_cluster_label - 1}")
 
     # Small helper to test if any of given indices already assigned:
     def any_assigned(indices):
@@ -275,7 +294,7 @@ def agglomerate_by_time_purity(clusterer,
         point_indices_for_t = sorted(point_indices_for_t)
 
         seeds = initialize_timepoint_seeds_with_prior(
-            clusterer, time_index_to_linear_feature_indices, t, cluster_label2node, 1.2*len(timepoints), G, assigned_index_to_cluster
+            clusterer, time_index_to_linear_feature_indices, linear_ind_to_t_and_seg_id, t, cluster_label2node, max_initial_cluster_size, G, leaves_under, assigned_index_to_cluster
         )
 
         for idx, seed_info in tqdm(seeds.items(), desc="Looping through seed points", leave=False):
@@ -291,14 +310,21 @@ def agglomerate_by_time_purity(clusterer,
             start_indices = leaves_under[anc]
 
             is_updated = False
+            best_candidate = None
+            best_purity = -1.0
+            best_kept_size = -1
+            candidate_cluster_label = current_cluster_label
             if len(start_indices) == 1:
                 print(f"Initializing a cluster from a leaf ({anc})")
-                # Then we can form a new cluster
-                best_candidate = None
-                best_purity = -1.0
-                best_kept_size = -1
+                # Then we can form a new cluster (keep defaults)
+            elif seed_info['original_label'] in used_cluster_labels:
+                print(f"Candidate was an hdbscan cluster, but it is already used; starting from leaf ({anc})")
             else:
                 # Then we have a candidate hdbscan cluster, and need to calculate it's initial stats
+                # Also: the starting indices here are not the pure tree indices, but rather were pruned by EOM
+                candidate_cluster_label = seed_info['original_label']
+                idx_boolean = clusterer.labels_ == candidate_cluster_label
+                start_indices = np.where(idx_boolean)[0]
                 kept_indices, purity, time_map = compute_time_purity_for_indices(start_indices,
                                                                                  linear_ind_to_t_and_seg_id,
                                                                                  clusterer,
@@ -306,12 +332,13 @@ def agglomerate_by_time_purity(clusterer,
                 best_candidate = (anc, start_indices, kept_indices, purity)
                 best_purity = purity
                 best_kept_size = len(kept_indices)
-                # print(f"Initializing a cluster with hdbscan cluster ({seed_info['original_label']}, size={len(start_indices)})")
+                print(f"Initializing a cluster with hdbscan cluster ({seed_info['original_label']}, size={len(start_indices)}, purity={best_purity})")
                 
             
             for anc in tqdm(seed_info['ancestors'], desc="Checking merges", leave=False):
                 raw_indices = leaves_under.get(anc, set())
                 if len(raw_indices) == 0 or len(raw_indices) > 2*len(timepoints):
+                    # Don't even check if the candidate is too big
                     continue
                 # Compute kept_indices and purity (prefer unassigned when tie via assigned_indices pass)
                 kept_indices, purity, time_map = compute_time_purity_for_indices(raw_indices,
@@ -326,15 +353,17 @@ def agglomerate_by_time_purity(clusterer,
                 # Candidate tie-breaking:
                 # prefer higher purity; on equal purity prefer larger kept size
                 if purity > best_purity + eps_purity_increase or (abs(purity - best_purity) <= eps_purity_increase and kept_size > best_kept_size):
-                    best_candidate = (anc, raw_indices, kept_indices, purity)
-                    best_purity = purity
-                    best_kept_size = kept_size
-                    is_updated = True
+                    # For intermediate steps, do not allow clusters that will not be accepted later
+                    if not any_assigned(kept_indices):
+                        best_candidate = (anc, raw_indices, kept_indices, purity)
+                        best_purity = purity
+                        best_kept_size = kept_size
+                        is_updated = True
 
             # If we found a viable best candidate, check conflicts with already assigned indices
             if best_candidate is not None and best_purity > min_purity:
                 anc_node, raw_indices, kept_indices, purity = best_candidate
-                # Do not re-use indices already assigned to prior accepted clusters
+                # Do not re-use indices already assigned to prior accepted clusters 
                 if any_assigned(kept_indices):
                     # skip candidate to keep clusters disjoint. Alternatively, we could drop assigned indices
                     # and recompute purity, but that adds complexity. For now we skip such candidates.
@@ -350,25 +379,30 @@ def agglomerate_by_time_purity(clusterer,
                 })
                 # mark kept indices as assigned
                 for idx in kept_indices:
-                    assigned_index_to_cluster[int(idx)] = cluster_counter
+                    assigned_index_to_cluster[int(idx)] = candidate_cluster_label
                 # mark all raw but not-kept indices as outliers
                 for idx in raw_indices:
                     if idx not in kept_indices:
                         outliers.add(idx)
-                cluster_counter += 1
+                used_cluster_labels.append(candidate_cluster_label)
+                current_cluster_label += 1
 
                 if is_updated:
-                    print(f"Accepted a modified cluster of size {len(kept_indices)}/{len(raw_indices)} with purity {purity} for object {idx} at t {t}")
+                    print(f"Accepted a modified cluster of size {len(kept_indices)}/{len(raw_indices)} with purity {purity} for object {idx} at t {t} (Current number accepted: {len(used_cluster_labels)})")
                     num_clusters_changed += 1
                 # else:
-                #     print("Kept initialized cluster")
+                #     print("Accepting cluster without modification")
             else:
                 print(f"No best candidate found (best_purity={best_purity}; size={best_kept_size})")
         # print("Stopping after t=0")
         # break
 
-        print(f"In this iteration, {num_clusters_changed} clusters were modified or added (total accepted clusters: {cluster_counter})")
+        print(f"In this iteration, {num_clusters_changed} clusters were modified (total accepted clusters: {len(used_cluster_labels)})")
         if num_clusters_changed == 0:
-            print("No clusters modified, stopping")
+            if patience == 0:
+                print("No clusters modified, stopping")
+                break
+            else:
+                patience -= 1
 
     return accepted_clusters, assigned_index_to_cluster, outliers
