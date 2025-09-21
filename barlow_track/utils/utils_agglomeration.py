@@ -132,7 +132,7 @@ def compute_time_purity_for_indices(indices: Iterable[int],
 
 
 def initialize_timepoint_seeds_with_prior(
-    clusterer, time_index_to_linear_feature_indices, template_timepoint, cluster_label2node, t_max, assigned_index_to_cluster={}
+    clusterer, time_index_to_linear_feature_indices, template_timepoint, cluster_label2node, t_max, G, assigned_index_to_cluster={}
 ):
     """
     Initialize seeds from a single template time point, skipping:
@@ -239,7 +239,7 @@ def agglomerate_by_time_purity(clusterer,
             leaves_under[node] = {d for d in desc if 0 <= d < n_points}
     
     # Roots are nodes with no parent
-    roots = [n for n in G.nodes if G.in_degree(n) == 0]
+    # roots = [n for n in G.nodes if G.in_degree(n) == 0]
 
     # df_ct = build_condensed_tree_graph(clusterer)
     # G, leaves_under, roots = build_tree_and_leaf_index(df_ct, n_points)
@@ -275,7 +275,7 @@ def agglomerate_by_time_purity(clusterer,
         point_indices_for_t = sorted(point_indices_for_t)
 
         seeds = initialize_timepoint_seeds_with_prior(
-            clusterer, time_index_to_linear_feature_indices, t, cluster_label2node, 1.2*len(timepoints), assigned_index_to_cluster
+            clusterer, time_index_to_linear_feature_indices, t, cluster_label2node, 1.2*len(timepoints), G, assigned_index_to_cluster
         )
 
         for idx, seed_info in tqdm(seeds.items(), desc="Looping through seed points", leave=False):
