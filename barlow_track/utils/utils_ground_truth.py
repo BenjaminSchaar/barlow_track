@@ -167,8 +167,8 @@ def discover_trials(trial_parent_dir):
     trials = []
     for entry in os.listdir(trial_parent_dir):
         entry_path = os.path.join(trial_parent_dir, entry)
-        if os.path.isdir(entry_path) and entry.startswith("trial_"):
-            match = re.match(r"trial_(\d+)", entry)
+        if os.path.isdir(entry_path) and "trial_" in entry:
+            match = re.search(r"trial_(\d+)", entry)
             if match:
                 trials.append(int(match.group(1)))
     return sorted(trials)
@@ -193,7 +193,7 @@ def extract_val_loss(trial_path):
         return None
 
 
-def build_accuracy_dict(gt_path, project_dir, trial_dir):
+def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
     """
     Build a dictionary of accuracy metrics for all trials in the result directory.
     Assumes that each trial in the trial_dir is based on the same ground truth data.
@@ -201,11 +201,13 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
     """
 
     # Load GT once
-    project_data_gt = ProjectData.load_final_project_data(gt_path, verbose=0)
+    project_data_gt = ProjectData.load_final_project_data(gt_path, allow_hybrid_loading=True, verbose=0)
     df_gt, finished_neurons = project_data_gt.get_final_tracks_only_finished_neurons()
     if df_gt is None or df_gt.empty:
         logging.warning("No finished neurons found in ground truth data, assuming all neurons are ground truth.")
         df_gt = project_data_gt.final_tracks
+    if df_gt is None:
+        raise ValueError("No tracks found in the ground truth")
 
     result_dict = {
         "trial": [],
@@ -234,7 +236,11 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
         "mismatches_per_neuron_norm": [],
         "mismatches_per_timepoint_norm": [],
     }
-    trials = discover_trials(trial_dir)
+    if trial_dir is not None:
+        trials = discover_trials(trial_dir)
+    else:
+        trials = discover_trials(project_dir)
+    print(f"Found {len(trials)} trials")
 
     # Map trials to folder names within project_dir
     all_project_dirs = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
@@ -243,17 +249,16 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
     for trial_num in tqdm(trials):
         trial_name = f"trial_{trial_num}"
         trial_name_config = f"trial_{trial_num}"
-        trial_path = os.path.join(trial_dir, trial_name_config)
+        if trial_dir is not None:
+            trial_path = os.path.join(trial_dir, trial_name_config)
+            network_config_path = os.path.join(trial_path, "train_config.yaml")
+        else:
+            network_config_path = ""
         project_path = trial_to_project_map.get(trial_num, None)
         if project_path is None:
             print(f"{trial_name}: No matching project directory found in {project_dir} for trial {trial_num}; probably the traces have not yet been analyzed")
             continue
         project_path = os.path.join(project_dir, project_path, "project_config.yaml")
-        network_config_path = os.path.join(trial_path, "train_config.yaml")
-
-        if not os.path.isfile(network_config_path):
-            print(f"{trial_name}: train_config.yaml not found.")
-            continue
 
         try:
             with open(network_config_path, "r") as f:
@@ -268,6 +273,11 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir):
             val_loss = extract_val_loss(trial_path)
             result_dict["val_loss"].append(val_loss)
 
+        except FileNotFoundError:
+            print(f"{trial_name}: train_config.yaml not found.")
+
+        # The project may still exist even if the network can't be found
+        try:
             if os.path.isfile(project_path):
                 # print("Processing trials")
                 stats = process_trial(trial_num, df_gt, project_path)
