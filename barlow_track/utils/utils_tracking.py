@@ -474,8 +474,13 @@ class WormClusterTracker:
         return df_cluster
     
     def track_using_label_propagation_clusterer(self, num_seeds, num_neighbors=20, umap_projection=False):
-        # seed_times = np.arange(50)   # seed frames
+        """
+        Tracks objects by generating clusters via label propagation, starting with detected objects at random seed time points
 
+        These clusters are then aligned via two-step hungarian matching. For each labeling:
+            Match labels to a reference labeling
+            Then update the reference labeling by matching for each time slice
+        """
         timepoints = list(self.time_index_to_linear_feature_indices.keys())
         random.shuffle(timepoints)
         seed_times = timepoints[:num_seeds]
