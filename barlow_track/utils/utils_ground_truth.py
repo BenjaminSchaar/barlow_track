@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+from typing import Union
 import pandas as pd
 import numpy as np
 from tqdm.auto import tqdm
@@ -110,8 +111,7 @@ def calculate_accuracy(df_gt: pd.DataFrame, df_pred: pd.DataFrame) -> dict:
     }
 
 
-
-def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
+def process_trial(trial: int, df_gt: pd.DataFrame, res_file: Union[str, pd.DataFrame]) -> dict:
     """
     Process a single trial: load results, match columns, pad rows, and compute accuracy.
 
@@ -130,9 +130,14 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: str) -> dict:
         Dictionary containing trial number and accuracy stats.
     """
     try:
-        # Load result data
-        project_data_res = ProjectData.load_final_project_data(res_file, verbose=0)
-        df_res = project_data_res.final_tracks
+        if isinstance(res_file, str):
+            # Load result data
+            project_data_res = ProjectData.load_final_project_data(res_file, verbose=0)
+            df_res = project_data_res.final_tracks
+        elif isinstance(res_file, pd.DataFrame):
+            df_res = res_file
+        else:
+            raise TypeError(res_file)
         if df_res is None:
             print(f"{trial}: No final tracks found in {res_file}")
             return {"trial": trial, "error": "No final tracks found"}

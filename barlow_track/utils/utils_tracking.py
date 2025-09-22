@@ -12,7 +12,6 @@ import hdbscan
 from wbfm.utils.external.utils_pandas import fill_missing_indices_with_nan
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching, \
     combine_dataframes_using_mode, combine_and_rename_multiple_dataframes
-from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.external.utils_neuron_names import int2name_neuron
 
 
@@ -133,6 +132,9 @@ class WormClusterTracker:
         if isinstance(db_svd, (list, np.ndarray)):
             all_labels = db_svd
             all_likelihoods = None
+        elif isinstance(db_svd, dict):
+            all_labels = db_svd['labels']
+            all_likelihoods = db_svd['probabilities']
         else:
             all_labels = db_svd.labels_
             all_likelihoods = db_svd.probabilities_
@@ -444,11 +446,14 @@ class WormClusterTracker:
 
         # Do umap projection
         if umap_projection:
-            print(f"Doing UMAP projection with options: {opt_umap}")
-            from umap import UMAP
-            umap = UMAP(**opt_umap)
-            X_umap = umap.fit_transform(self.X_svd)
-            self.X_umap = X_umap
+            if self.X_umap is None:
+                print(f"Doing UMAP projection with options: {opt_umap}")
+                from umap import UMAP
+                umap = UMAP(**opt_umap)
+                X_umap = umap.fit_transform(self.X_svd)
+                self.X_umap = X_umap
+            else:
+                X_umap = self.X_umap 
         else:
             X_umap = self.X_svd
 
