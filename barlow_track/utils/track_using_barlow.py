@@ -27,7 +27,6 @@ from barlow_track.utils.utils_tracking import WormClusterTracker, get_target_siz
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    model_fname=None,
                                    results_subfolder=None,
-                                   tracking_mode='global',
                                    use_projection_space=False,
                                    to_plot_relative_accuracy=False,
                                    DEBUG=False,
@@ -68,6 +67,10 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     if results_subfolder is None:
         results_subfolder = '3-tracking/barlow_tracker'
         project_data.logger.info(f"Output subfolder for results: {results_subfolder}")
+
+    # Get tracking method from config
+    tracking_config = project_config.get_tracking_config()
+    tracking_mode = tracking_config.get('barlow_tracker', {}).get('tracking_mode', 'global')
 
     # Check to see if the results already exist
     results_subfolder_full = project_config.resolve_relative_path(results_subfolder)
@@ -171,6 +174,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     elif tracking_mode == 'streaming':
         project_config.logger.info("Running: track_using_streaming_clusterer")
         df_combined = tracker.track_using_streaming_clusterer()
+    elif tracking_mode == 'label_propagation':
+        df_combined = tracker.track_using_label_propagation_clusterer()
 
     # Add metadata stored in the project
     project_config.logger.info("Adding metadata to the final dataframe")
