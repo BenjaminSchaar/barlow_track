@@ -46,7 +46,7 @@ import random
 
 def compute_time_purity_for_indices(indices: Iterable[int],
                                     linear_ind_to_t_and_seg_id: Dict[int, Tuple],
-                                    clusterer,
+                                    probabilities,
                                     assigned_indices: Optional[Set[int]] = None,
                                     max_size=None):
     """
@@ -73,24 +73,12 @@ def compute_time_purity_for_indices(indices: Iterable[int],
 
     # Try to obtain membership confidence/probability for each point.
     # HDBSCAN provides clusterer.probabilities_ (0 for noise, (0,1] for cluster members).
-    if hasattr(clusterer, "probabilities_") and clusterer.probabilities_ is not None:
-        probs = getattr(clusterer, "probabilities_")
-        # guard length
-        if len(probs) < max(indices) + 1:
-            # fallback to uniform if mismatched sizes
-            def _score(i): return 1.0
-        else:
-            def _score(i): return float(probs[int(i)])
+    # guard length
+    if len(probabilities) < max(indices) + 1:
+        # fallback to uniform if mismatched sizes
+        def _score(i): return 1.0
     else:
-        # fallback: use presence in a cluster (labels_ != -1) as confidence 1.0,
-        # noise (label -1) as 0.0. (This is crude — replace with embedding-based score if available.)
-        labels = getattr(clusterer, "labels_", None)
-        if labels is None:
-            def _score(i): return 1.0
-        else:
-            def _score(i):
-                lab = int(labels[int(i)])
-                return 0.0 if lab == -1 else 1.0
+        def _score(i): return float(probabilities[int(i)])
 
     # group indices by time
     time_to_indices: Dict = {}
@@ -184,7 +172,7 @@ def initialize_timepoint_seeds_with_prior(
                 start_indices = np.where(idx_boolean)[0]
                 kept_indices, purity, time_map = compute_time_purity_for_indices(start_indices,
                                                                                  linear_ind_to_t_and_seg_id,
-                                                                                 clusterer,
+                                                                                 clusterer.probabilities_,
                                                                                  assigned_indices=set(assigned_index_to_cluster.keys()))
                 if purity < 0.8:
                     print(f"Found very impure hdbscan cluster ({purity}; label={labels[idx]}), trying to find better starting from leaf")
@@ -214,8 +202,8 @@ def agglomerate_by_time_purity(clusterer,
                                time_index_to_linear_feature_indices: Dict[int, List[int]],
                                min_kept_size: int = 2,
                                patience=5,
-                               eps_purity_increase: float = 1e-6,
-                              min_purity=0.5):
+                               eps_increase: float = 1e-6,
+                              min_goodness=0.5):
     """
     Main function to run the greedy, time-seeded agglomeration over the HDBSCAN condensed tree.
 
@@ -271,7 +259,11 @@ def agglomerate_by_time_purity(clusterer,
     
     timepoints = list(time_index_to_linear_feature_indices.keys())
     random.shuffle(timepoints)
-    max_initial_cluster_size = 1.2*len(timepoints)
+    num_timepoints = len(timepoints)
+    max_initial_cluster_size = 1.2*num_timepoints
+
+    alpha = 0.9
+    goodness = lambda purity, coverage: (1-alpha)*purity + alpha*coverage
     # timepoints = sorted(list(time_index_to_linear_feature_indices.keys()),
     #                     key=lambda t: len(time_index_to_linear_feature_indices[t]),
     #                     reverse=True)
@@ -312,6 +304,8 @@ def agglomerate_by_time_purity(clusterer,
             is_updated = False
             best_candidate = None
             best_purity = -1.0
+            best_coverage = -1.0
+            best_goodness = goodness(best_purity, best_coverage)
             best_kept_size = -1
             candidate_cluster_label = current_cluster_label
             if len(start_indices) == 1:
@@ -327,42 +321,51 @@ def agglomerate_by_time_purity(clusterer,
                 start_indices = np.where(idx_boolean)[0]
                 kept_indices, purity, time_map = compute_time_purity_for_indices(start_indices,
                                                                                  linear_ind_to_t_and_seg_id,
-                                                                                 clusterer,
+                                                                                 clusterer.probabilities_,
                                                                                  assigned_indices=set(assigned_index_to_cluster.keys()))
-                best_candidate = (anc, start_indices, kept_indices, purity)
                 best_purity = purity
+                best_coverage = len(kept_indices) / num_timepoints
+                best_goodness = goodness(purity, best_coverage)
+                best_candidate = (anc, start_indices, kept_indices, purity, best_coverage)
                 best_kept_size = len(kept_indices)
-                print(f"Initializing a cluster with hdbscan cluster ({seed_info['original_label']}, size={len(start_indices)}, purity={best_purity})")
-                
+                print(f"Initializing a cluster with hdbscan cluster ({seed_info['original_label']}, size={len(start_indices)}, goodness={best_goodness})")
             
+            checked_merges = 0
             for anc in tqdm(seed_info['ancestors'], desc="Checking merges", leave=False):
                 raw_indices = leaves_under.get(anc, set())
                 if len(raw_indices) == 0 or len(raw_indices) > 2*len(timepoints):
                     # Don't even check if the candidate is too big
                     continue
+                else:
+                    checked_merges += 1
                 # Compute kept_indices and purity (prefer unassigned when tie via assigned_indices pass)
                 kept_indices, purity, time_map = compute_time_purity_for_indices(raw_indices,
                                                                                  linear_ind_to_t_and_seg_id,
-                                                                                 clusterer,
+                                                                                 clusterer.probabilities_,
                                                                                  assigned_indices=set(assigned_index_to_cluster.keys()))
                 kept_size = len(kept_indices)
+                coverage = kept_size / num_timepoints
                 # We only consider candidates that will keep at least min_kept_size items
                 if kept_size < min_kept_size:
                     continue
 
+                this_goodness = goodness(purity, coverage)
                 # Candidate tie-breaking:
                 # prefer higher purity; on equal purity prefer larger kept size
-                if purity > best_purity + eps_purity_increase or (abs(purity - best_purity) <= eps_purity_increase and kept_size > best_kept_size):
+                if this_goodness > best_goodness + eps_increase:
                     # For intermediate steps, do not allow clusters that will not be accepted later
                     if not any_assigned(kept_indices):
-                        best_candidate = (anc, raw_indices, kept_indices, purity)
+                        best_candidate = (anc, raw_indices, kept_indices, purity, coverage)
                         best_purity = purity
+                        best_goodness = this_goodness
                         best_kept_size = kept_size
                         is_updated = True
+                    # else:
+                    #     print(f"Found good cluster candidate, but it overlapped with an existing cluster; skipping")
 
             # If we found a viable best candidate, check conflicts with already assigned indices
-            if best_candidate is not None and best_purity > min_purity:
-                anc_node, raw_indices, kept_indices, purity = best_candidate
+            if best_candidate is not None and best_goodness > min_goodness:
+                anc_node, raw_indices, kept_indices, purity, coverage = best_candidate
                 # Do not re-use indices already assigned to prior accepted clusters 
                 if any_assigned(kept_indices):
                     # skip candidate to keep clusters disjoint. Alternatively, we could drop assigned indices
@@ -376,6 +379,7 @@ def agglomerate_by_time_purity(clusterer,
                     'raw_indices': set(raw_indices),
                     'kept_indices': set(kept_indices),
                     'purity': float(purity),
+                    'coverage': float(coverage)
                 })
                 # mark kept indices as assigned
                 for idx in kept_indices:
@@ -388,12 +392,12 @@ def agglomerate_by_time_purity(clusterer,
                 current_cluster_label += 1
 
                 if is_updated:
-                    print(f"Accepted a modified cluster of size {len(kept_indices)}/{len(raw_indices)} with purity {purity} for object {idx} at t {t} (Current number accepted: {len(used_cluster_labels)})")
+                    print(f"Accepted a modified cluster of size {len(kept_indices)}/{len(raw_indices)} with goodness {best_goodness} for object {idx} at t {t} (Current number accepted: {len(used_cluster_labels)})")
                     num_clusters_changed += 1
                 # else:
                 #     print("Accepting cluster without modification")
             else:
-                print(f"No best candidate found (best_purity={best_purity}; size={best_kept_size})")
+                print(f"No best candidate found from {checked_merges} merges (best_goodness={best_goodness}; size={best_kept_size})")
         # print("Stopping after t=0")
         # break
 
