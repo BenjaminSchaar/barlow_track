@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+import random
 import numpy as np
 import pandas as pd
 from backports.cached_property import cached_property
@@ -13,6 +14,8 @@ from wbfm.utils.external.utils_pandas import fill_missing_indices_with_nan
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching, \
     combine_dataframes_using_mode, combine_and_rename_multiple_dataframes
 from wbfm.utils.external.utils_neuron_names import int2name_neuron
+
+from barlow_track.utils.utils_label_propagation import align_all, multi_seed_propagation
 
 
 @dataclass
@@ -468,6 +471,34 @@ class WormClusterTracker:
         df_cluster = self.cluster_obj2dataframe(db_svd, start_volume=0, n_vols=self.num_frames,
                                                 labels_are_in_feature_order=True)
 
+        return df_cluster
+    
+    def track_using_label_propagation_clusterer(self, num_seeds, num_neighbors=20, umap_projection=False):
+        # seed_times = np.arange(50)   # seed frames
+
+        timepoints = list(self.time_index_to_linear_feature_indices.keys())
+        random.shuffle(timepoints)
+        seed_times = timepoints[:num_seeds]
+
+        if umap_projection:
+            print(f"Doing UMAP projection with options: {self.opt_umap}")
+            from umap import UMAP
+            umap = UMAP(**self.opt_umap)
+            X_umap = umap.fit_transform(self.X_svd)
+            self.X_umap = X_umap
+        else:
+            X = self.X_svd
+
+        # All the labelings, starting from different seeds
+        labelings = multi_seed_propagation(X, seed_times, self.time_index_to_linear_feature_indices, k=num_neighbors)
+
+        # Align all of the different labelings
+        all_aligned, final_labels, confidence = align_all(labelings, self.time_index_to_linear_feature_indices)
+
+        # Convert to dataframe
+        df_cluster = self.cluster_obj2dataframe({'labels': final_labels, 'probabilities': confidence}, 
+                                                start_volume=0, n_vols=self.num_frames, labels_are_in_feature_order=True)
+    
         return df_cluster
 
     def build_streaming_clusterer(self):
