@@ -112,7 +112,7 @@ class WormClusterTracker:
             raise ValueError(f"Raw neuron index {linear_ind} not found in linear indices.")
 
     def cluster_obj2dataframe(self, db_svd, start_volume: int = 0, vol_ind: list = None,
-                              n_vols=None, labels_are_in_feature_order=False):
+                              n_vols=None, labels_are_in_feature_order=False, verbose=0):
         """
         Associate cluster label ids to a (time, local ind) tuple
         i.e. build a dict
@@ -194,8 +194,9 @@ class WormClusterTracker:
                         if likelihood > previous_likelihood:
                             cluster_dict[neuron_key][t] = raw_neuron_ind
                             cluster_dict[likelihood_key][t] = likelihood
-                        # logging.warning(f"Multiple assignments found for {this_neuron_name} at t={t}, ignoring second")
-                        pass
+                        if verbose:
+                            logging.warning(f"Multiple assignments found for {this_neuron_name} at t={t}, keeping higher likelihood: \
+                                            {likelihood} vs. {previous_likelihood}")
         else:
             # Me from the future... I really don't know why I need all this!
             time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
