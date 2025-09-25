@@ -171,7 +171,7 @@ class WormClusterTracker:
 
         if labels_are_in_feature_order:
             # i.e. labels are in the same order as the features, so we can just iterate through them
-            for i, label in tqdm(enumerate(all_labels), desc="Converting cluster object to dataframe"):
+            for i, label in enumerate(all_labels):
                 if label == -1:
                     continue
                 else:

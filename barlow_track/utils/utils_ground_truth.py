@@ -111,7 +111,7 @@ def calculate_accuracy(df_gt: pd.DataFrame, df_pred: pd.DataFrame) -> dict:
     }
 
 
-def process_trial(trial: int, df_gt: pd.DataFrame, res_file: Union[str, pd.DataFrame]) -> dict:
+def process_trial(trial: int, df_gt: pd.DataFrame, res_file: Union[str, pd.DataFrame], column_name='raw_segmentation_id') -> dict:
     """
     Process a single trial: load results, match columns, pad rows, and compute accuracy.
 
@@ -149,11 +149,11 @@ def process_trial(trial: int, df_gt: pd.DataFrame, res_file: Union[str, pd.DataF
 
         # Match columns using neuron matching
         df_res_renamed, _, _, _ = rename_columns_using_matching(
-            df_gt_padded, df_res, column='raw_segmentation_id', try_to_fix_inf=True
+            df_gt_padded, df_res, column=column_name, try_to_fix_inf=True
         )
         # Reduce both DataFrames to raw_segmentation_id level
-        df_res_renamed = df_res_renamed.xs('raw_segmentation_id', axis=1, level=1)
-        df_gt_padded = df_gt_padded.xs('raw_segmentation_id', axis=1, level=1)
+        df_res_renamed = df_res_renamed.xs(column_name, axis=1, level=1)
+        df_gt_padded = df_gt_padded.xs(column_name, axis=1, level=1)
 
         # Calculate accuracy
         stats = calculate_accuracy(df_gt_padded, df_res_renamed)
