@@ -19,7 +19,7 @@ import scipy.sparse as sp
 from scipy.optimize import linear_sum_assignment
 import time
 import torch
-import tqdm
+from tqdm.auto import tqdm
 
 
 # try sklearn randomized_svd
@@ -83,10 +83,10 @@ def greedy_top1_timewise(labels_topk, probs_topk, time_index_to_linear_feature_i
 def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_index_to_linear_feature_indices, 
                                         normalize_rows=True):
     """
-    Converts a list of N x K label index arrays + probability arrays into
+    Converts a list of N x topk label index arrays + probability arrays into
     a list of N x K_total sparse matrices for spectral sync.
     
-    labelings: list of N x K arrays, 1-indexed, -1 means invalid
+    labelings: list of N x topk candidate label arrays, 1-indexed, -1 means invalid
     probabilities: same shape as labelings
     normalize_rows: whether to normalize probabilities per object
     """
@@ -275,7 +275,7 @@ def round_block_to_partial_perm(V_block, null_cost=None):
 # 6) Aggregate per-object consensus
 ###########################
 
-def aggregate_consensus(A_list, perms, time_index_to_linear_feature_indices, topk=3, normalize_rows=True):
+def aggregate_consensus(A_list, perms, K, normalize_rows=True, doweight_runs=None):
     """
     Aggregate a list of N x K sparse matrices (one per run) into a consensus
     top-k labeling format via hungarian matching per time point.
@@ -285,7 +285,7 @@ def aggregate_consensus(A_list, perms, time_index_to_linear_feature_indices, top
     cons = np.zeros((N, K), dtype=float)
     if doweight_runs is None:
         doweight_runs = np.ones(R, dtype=float)
-    for r, A in tqdm(enumerate(A_list), desc="Aggregating runs", leave=False):
+    for r, A in tqdm(enumerate(A_list), desc="Aggregating runs", total=len(A_list), leave=False):
         perm = perms[r]  # length K with -1 allowed
         if A.nnz == 0:
             continue
@@ -294,15 +294,15 @@ def aggregate_consensus(A_list, perms, time_index_to_linear_feature_indices, top
             mapped = perm[j]  # <-- Apply permutation here!
             if mapped >= 0:
                 cons[i, mapped] += doweight_runs[r] * v
+    return cons
+    #     if normalize_rows:
+    #         s = probs_out[i].sum()
+    #         if s > 0:
+    #             probs_out[i] /= s
+    #         else:
+    #             probs_out[i] = 0
 
-        if normalize_rows:
-            s = probs_out[i].sum()
-            if s > 0:
-                probs_out[i] /= s
-            else:
-                probs_out[i] = 0
-
-    return labels_out, probs_out
+    # return labels_out, probs_out
 
 
 def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_feature_indices, 
@@ -328,7 +328,9 @@ def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_
     
     # Create a copy to modify
     consensus_unique = consensus_probs.copy()
-    
+    probs_out = np.zeros((N, 1), dtype=float)
+    labels_out = np.full((N, 1), -1, dtype=int)
+
     # Process each time point independently
     for time_idx, object_indices in tqdm(time_index_to_linear_feature_indices.items(), desc="Enforcing temporal uniqueness"):
         if len(object_indices) <= 1:
@@ -358,44 +360,50 @@ def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_
             
         # Solve assignment problem
         row_indices, col_indices = linear_sum_assignment(cost_matrix)
-        
-        # Clear all assignments for this time point first
-        consensus_unique[object_indices, :] = 0.0
-        
-        # Apply the Hungarian assignment
+
+        # Prepare outout as top-1 format, i.e. use the hungarian label but keep the probability from original
         for obj_idx, label_idx in zip(row_indices, col_indices):
             if obj_idx < n_objects and label_idx < K:
-                # Valid assignment to a real object and real label
-                original_prob = time_probs[obj_idx, label_idx]
-                if original_prob > min_prob_threshold:
-                    consensus_unique[object_indices[obj_idx], label_idx] = original_prob
-        
-        # Renormalize probabilities for objects at this time point
-        for obj_idx in object_indices:
-            row_sum = consensus_unique[obj_idx, :].sum()
-            if row_sum > 0:
-                consensus_unique[obj_idx, :] /= row_sum
-    
-    if return_format == 'full':
-        return consensus_unique
-    
-    elif return_format == 'topk':
-        # Convert to top-k format
-        labels_out = np.full((N, topk), -1, dtype=int)
-        probs_out = np.zeros((N, topk), dtype=float)
-        
-        for i in range(N):
-            row = consensus_unique[i, :]
-            if np.all(row == 0):
-                continue  # All probabilities are zero - leave as -1
-                
-            # Get top-k indices (in descending order)
-            top_indices = np.argsort(row)[-topk:][::-1]
-            valid_mask = row[top_indices] > min_prob_threshold
+                probs_out[object_indices[obj_idx], 0] = time_probs[obj_idx, label_idx] 
+                labels_out[object_indices[obj_idx], 0] = label_idx + 1
             
-            valid_indices = top_indices[valid_mask]
-            labels_out[i, :len(valid_indices)] = valid_indices + 1  # Convert to 1-indexed
-            probs_out[i, :len(valid_indices)] = row[valid_indices]
+        # Clear all assignments for this time point first
+        # consensus_unique[object_indices, :] = 0.0
+        
+    #     # Apply the Hungarian assignment
+    #     for obj_idx, label_idx in zip(row_indices, col_indices):
+    #         if obj_idx < n_objects and label_idx < K:
+    #             # Valid assignment to a real object and real label
+    #             original_prob = time_probs[obj_idx, label_idx]
+    #             if original_prob > min_prob_threshold:
+    #                 consensus_unique[object_indices[obj_idx], label_idx] = original_prob
+        
+    #     # Renormalize probabilities for objects at this time point
+    #     for obj_idx in object_indices:
+    #         row_sum = consensus_unique[obj_idx, :].sum()
+    #         if row_sum > 0:
+    #             consensus_unique[obj_idx, :] /= row_sum
+    
+    # if return_format == 'full':
+    #     return consensus_unique
+    
+    # elif return_format == 'topk':
+    #     # Convert to top-k format
+    #     labels_out = np.full((N, topk), -1, dtype=int)
+    #     probs_out = np.zeros((N, topk), dtype=float)
+        
+    #     for i in range(N):
+    #         row = consensus_unique[i, :]
+    #         if np.all(row == 0):
+    #             continue  # All probabilities are zero - leave as -1
+                
+    #         # Get top-k indices (in descending order)
+    #         top_indices = np.argsort(row)[-topk:][::-1]
+    #         valid_mask = row[top_indices] > min_prob_threshold
+            
+    #         valid_indices = top_indices[valid_mask]
+    #         labels_out[i, :len(valid_indices)] = valid_indices + 1  # Convert to 1-indexed
+    #         probs_out[i, :len(valid_indices)] = row[valid_indices]
             
         return labels_out, probs_out
     
@@ -432,9 +440,11 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
     # 1) build A_list
     if verbose:
         print("[info] Building per-run sparse matrices from top-k lists...")
+        print(f"Found {len(labels_list)} labelings of shape {labels_list[0].shape}")
     A_list = prepare_A_list_from_labelings_probs(labels_list, probs_list, N, K, time_index_to_linear_feature_indices,
                                                  normalize_rows=normalize_input_rows)
     if DEBUG:
+        print(f"Refactored into {len(A_list)} sparse matrices of shape {A_list[0].shape}")
         for i, A in enumerate(A_list):
             # row_sums = np.array(A.sum(axis=1)).flatten()
             # print(A.shape, row_sums.shape)
@@ -446,7 +456,7 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
             fig = px.imshow(A_dense[:1000, :].T, aspect=1)
             fig.show()
             print(np.where(np.isnan(A_dense)))
-            if i>2:
+            if i>0:
                 return
 
     # 2) column weighting
@@ -491,13 +501,13 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
         perms.append(perm)
 
     # 5) aggregate consensus probabilities
-    labels_out, probs_out = aggregate_consensus(A_list, perms, time_index_to_linear_feature_indices, topk, normalize_rows=True)
-    labels_out = labels_out + 1 
-    labels_out[probs_out.sum(axis=1) == 0] = -1
+    cons = aggregate_consensus(A_list, perms, K, normalize_rows=True)
+    # labels_out = labels_out + 1 
+    # labels_out[probs_out.sum(axis=1) == 0] = -1
 
     # 6) enforce temporal uniqueness
     labels_out, probs_out = enforce_temporal_uniqueness_hungarian(
-        labels_out, time_index_to_linear_feature_indices, 
+        cons, time_index_to_linear_feature_indices, 
         return_format='topk', topk=3
     )
 
@@ -510,7 +520,7 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
     obj_hist = obj_hist[obj_hist>0]
     diag = {
         'time': time.time() - t0,
-        'obj_label_count_histogram': obj_hist.tolist(),
+        # 'obj_label_count_histogram': obj_hist.tolist(),
         'max_labels_per_object': int(obj_counts.max()),
         'min_labels_per_object': int(obj_counts.min()),
         'mean_labels_per_object': float(obj_counts.mean()),
