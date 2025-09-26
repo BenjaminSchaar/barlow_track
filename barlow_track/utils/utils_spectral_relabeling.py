@@ -306,7 +306,7 @@ def aggregate_consensus(A_list, perms, K, normalize_rows=True, doweight_runs=Non
 
 
 def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_feature_indices, 
-                                          return_format='topk', topk=3, min_prob_threshold=1e-6):
+                                          R, min_prob_threshold=None):
     """
     Postprocessing to enforce one-object-per-time-point using Hungarian matching.
     
@@ -325,6 +325,8 @@ def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_
             consensus_probs_unique: N x K array with temporal uniqueness enforced
     """
     N, K = consensus_probs.shape
+    if min_prob_threshold is None:
+        min_prob_threshold = 0.02  # e.g. at least 2% of the runs agreeing
     
     # Create a copy to modify
     consensus_unique = consensus_probs.copy()
@@ -378,11 +380,13 @@ def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_
     #             if original_prob > min_prob_threshold:
     #                 consensus_unique[object_indices[obj_idx], label_idx] = original_prob
         
-    #     # Renormalize probabilities for objects at this time point
-    #     for obj_idx in object_indices:
-    #         row_sum = consensus_unique[obj_idx, :].sum()
-    #         if row_sum > 0:
-    #             consensus_unique[obj_idx, :] /= row_sum
+    # Normalize probabilities by number of runs
+    probs_out /= R
+
+    # And remove extremely low probabilities
+    invalid_mask = probs_out < min_prob_threshold
+    probs_out[invalid_mask] = 0.0
+    labels_out[invalid_mask] = -1
     
     # if return_format == 'full':
     #     return consensus_unique
@@ -405,10 +409,10 @@ def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_
     #         labels_out[i, :len(valid_indices)] = valid_indices + 1  # Convert to 1-indexed
     #         probs_out[i, :len(valid_indices)] = row[valid_indices]
             
-        return labels_out, probs_out
+    return labels_out, probs_out
     
-    else:
-        raise ValueError(f"Unknown return_format: {return_format}")
+    # else:
+    #     raise ValueError(f"Unknown return_format: {return_format}")
 
 
 
@@ -507,8 +511,7 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
 
     # 6) enforce temporal uniqueness
     labels_out, probs_out = enforce_temporal_uniqueness_hungarian(
-        cons, time_index_to_linear_feature_indices, 
-        return_format='topk', topk=3
+        cons, time_index_to_linear_feature_indices, R=R
     )
 
     # Last - diagnostics (overlap histogram & simple pairwise agreement sample)
