@@ -70,7 +70,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 
     # Get tracking method from config
     tracking_config = project_config.get_tracking_config()
-    tracking_mode = tracking_config.get('barlow_tracker', {}).get('tracking_mode', 'global')
+    tracking_mode = tracking_config.config.get('barlow_tracker', {}).get('tracking_mode', 'global')
 
     # Check to see if the results already exist
     results_subfolder_full = project_config.resolve_relative_path(results_subfolder)
