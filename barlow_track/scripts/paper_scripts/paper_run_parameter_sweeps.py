@@ -1,10 +1,5 @@
-
-
 import os
-
 import tqdm
-from barlow_track.scripts.optimize_hyperparameters import optimize_hyperparameters
-from multiprocessing import Process
 
 
 if __name__ == "__main__":
@@ -13,8 +8,6 @@ if __name__ == "__main__":
     sweep_dirs = []#'training_data_sweep_zimmer', 'training_data_sweep_flavell', 'training_data_sweep_samuel']
     augmentation_dirs = ['augmentation_sweep_zimmer', 'augmentation_sweep_flavell', 'augmentation_sweep_samuel']
     
-    run_locally = False
-    num_parallel_jobs = 10
     DEBUG = False
     all_p = []
 
