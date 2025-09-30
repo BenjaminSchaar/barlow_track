@@ -16,11 +16,12 @@ if __name__ == "__main__":
     DEBUG = False
     all_p = []
 
-    for models_dir in trained_model_dirs:
-        print(f"Submitting job for {models_dir}")
-        parts = models_dir.split('_')
+    for model_name in trained_model_dirs:
+        print(f"Submitting job for {model_name}")
+        parts = model_name.split('_')
         lab_name = parts[-1]
         new_location = os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1]))
+        models_dir = os.path.join(model_parent_dir, model_name)
         
         create_projects_and_traces_from_barlow_folder(new_location, models_dir)
 
