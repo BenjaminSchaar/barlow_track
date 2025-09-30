@@ -11,11 +11,8 @@ if __name__ == "__main__":
 
     trained_model_dirs = ['inverse_augmentation_sweep_zimmer', 'inverse_augmentation_sweep_flavell', 'inverse_augmentation_sweep_samuel']
     
-    run_locally = False
-    num_parallel_jobs = 10
     DEBUG = False
-    all_p = []
-
+    
     for model_name in trained_model_dirs:
         print(f"Submitting job for {model_name}")
         parts = model_name.split('_')
