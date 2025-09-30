@@ -2,10 +2,7 @@
 
 import os
 
-import tqdm
-from barlow_track.scripts.multiproject_scripts import create_projects_and_traces_from_barlow_folder
-from barlow_track.scripts.optimize_hyperparameters import optimize_hyperparameters
-from multiprocessing import Process
+from barlow_track.utils.utils_multiproject_analysis import create_projects_and_traces_from_barlow_folder
 
 
 if __name__ == "__main__":
