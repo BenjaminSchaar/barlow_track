@@ -12,7 +12,7 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     if this_seg is None:
         # Then we try to use the centroids directly
         df_tracks = project_data.intermediate_global_tracks
-        _get_bbox = lambda i, neuron: df_tracks.loc[t, (neuron, ['z', 'x', 'y'])]
+        _get_bbox = lambda i, neuron: df_tracks.loc[t, (neuron, ['z', 'x', 'y'])].values
         neurons = df_tracks.columns.get_level_values(0).unique()
     else:
         props = regionprops(this_seg[t, ...])

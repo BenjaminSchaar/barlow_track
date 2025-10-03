@@ -81,7 +81,7 @@ def greedy_top1_timewise(labels_topk, probs_topk, time_index_to_linear_feature_i
 
 
 def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_index_to_linear_feature_indices, 
-                                        normalize_rows=True):
+                                        normalize_rows=True, probability_threshold=0.0):
     """
     Converts a list of N x topk label index arrays + probability arrays into
     a list of N x K_total sparse matrices for spectral sync.
@@ -96,6 +96,7 @@ def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_ind
         L = np.array(L, dtype=int)
         P = np.array(P, dtype=float)
         P = np.nan_to_num(P, nan=0)
+        P[P < probability_threshold] = 0.0
 
         # Do greedy matching to enforce temporal uniqueness
         if time_index_to_linear_feature_indices is not None:
@@ -295,14 +296,6 @@ def aggregate_consensus(A_list, perms, K, normalize_rows=True, doweight_runs=Non
             if mapped >= 0:
                 cons[i, mapped] += doweight_runs[r] * v
     return cons
-    #     if normalize_rows:
-    #         s = probs_out[i].sum()
-    #         if s > 0:
-    #             probs_out[i] /= s
-    #         else:
-    #             probs_out[i] = 0
-
-    # return labels_out, probs_out
 
 
 def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_feature_indices, 
@@ -424,7 +417,8 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
                             time_index_to_linear_feature_indices,
                             do_col_weighting=True, weighting_strategy='invsqrt-count',
                             use_matrix_free=False, svd_params=None,
-                            null_cost=None, normalize_input_rows=True, verbose=True, DEBUG=False):
+                            null_cost=None, normalize_input_rows=True, input_probability_threshold=0.0, 
+                            verbose=True, DEBUG=False):
     """
     runs_topk: list of run dicts mapping obj->[(label,prob), ...]
     K: number of labels; safe to overestimate
@@ -446,7 +440,8 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
         print("[info] Building per-run sparse matrices from top-k lists...")
         print(f"Found {len(labels_list)} labelings of shape {labels_list[0].shape}")
     A_list = prepare_A_list_from_labelings_probs(labels_list, probs_list, N, K, time_index_to_linear_feature_indices,
-                                                 normalize_rows=normalize_input_rows)
+                                                 normalize_rows=normalize_input_rows,
+                                                 probability_threshold=input_probability_threshold)
     if DEBUG:
         print(f"Refactored into {len(A_list)} sparse matrices of shape {A_list[0].shape}")
         for i, A in enumerate(A_list):
