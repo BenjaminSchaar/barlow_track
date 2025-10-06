@@ -86,9 +86,6 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
             raise e
         else:
             mdata = project_data.intermediate_global_tracks.loc[t].unstack(level=1).dropna()
-        if include_untracked:
-            logging.warning("Could not find raw segmentation metadata, so cannot include untracked neurons "
-                            "- returning only objects in intermediate_global_tracks")
 
     for i, row in mdata.iterrows():
         this_seg_label = int(row['raw_segmentation_id'])
@@ -99,7 +96,10 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
                 continue
             else:
                 # Make a unique name for this untracked object, but keep the correct label
-                ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
+                try:
+                    ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
+                except FileNotFoundError:
+                    ind_in_list = int(row['raw_neuron_ind_in_list'])
                 this_name = f"untracked_time_{t}_{ind_in_list:04d}_{this_seg_label:04d}"
         zxy = [row['z'], row['x'], row['y']]
         # Repeat to be zxyzxy

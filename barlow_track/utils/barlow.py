@@ -280,6 +280,12 @@ class NeuronImageWithGTDataset(Dataset):
         self.which_neurons = project_data.get_list_of_finished_neurons()[1]
         self.include_untracked = include_untracked
 
+        try:
+            _ = self.project_data.segmentation_metadata
+        except FileNotFoundError:
+            assert project_data.intermediate_global_tracks is not None, "Need either raw segmentation metadata or intermediate_global_tracks"
+            logging.warning("No raw segmentation metadata found, using intermediate_global_tracks instead")
+
     def _normalize(self, x):
         # Note: applied to crops, not full volumes
         t = self._transform.final_normalization_no_copy
