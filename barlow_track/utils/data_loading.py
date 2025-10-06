@@ -77,8 +77,18 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     sz = project_data.red_data.shape
 
     # Use the metadata as calculated in the project
-    row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t, as_dataframe=False)
-    mdata = pd.DataFrame(dict(zip(column_names, row_data)))
+    try:
+        row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t, as_dataframe=False)
+        mdata = pd.DataFrame(dict(zip(column_names, row_data)))
+    except FileNotFoundError as e:
+        # Fallback to the intermediate tracks
+        if project_data.intermediate_global_tracks is None:
+            raise e
+        else:
+            mdata = project_data.intermediate_global_tracks.loc[t].unstack(level=1).dropna()
+        if include_untracked:
+            logging.warning("Could not find raw segmentation metadata, so cannot include untracked neurons "
+                            "- returning only objects in intermediate_global_tracks")
 
     for i, row in mdata.iterrows():
         this_seg_label = int(row['raw_segmentation_id'])
