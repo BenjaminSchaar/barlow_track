@@ -20,7 +20,7 @@ from wbfm.utils.projects.finished_project_data import ProjectData
 from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.general.utils_filenames import pickle_load_binary
 from wbfm.utils.external.utils_neuron_names import name2int_neuron_and_tracklet
-from wbfm.utils.projects.utils_redo_steps import add_metadata_to_df_raw_ind
+from wbfm.utils.projects.utils_redo_steps import add_metadata_to_df_raw_ind, combine_metadata_from_two_dataframes
 from barlow_track.utils.utils_tracking import WormClusterTracker, get_target_size_from_args
 
 
@@ -179,7 +179,10 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 
     # Add metadata stored in the project
     project_config.logger.info("Adding metadata to the final dataframe")
-    df_combined = add_metadata_to_df_raw_ind(df_combined, project_data.segmentation_metadata)
+    try:
+        df_combined = add_metadata_to_df_raw_ind(df_combined, project_data.segmentation_metadata)
+    except FileNotFoundError:
+        df_combined = combine_metadata_from_two_dataframes(df_combined, project_data.intermediate_global_tracks)
 
     fname = os.path.join(results_subfolder, f'df_barlow_tracks.h5')
     tracking_config = project_config.get_tracking_config()
