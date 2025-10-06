@@ -108,7 +108,11 @@ def get_crops_from_project(crop_kwargs, frames, project_data):
     with tqdm(total=frames, desc="Sampling volumes") as pbar:
         while i < len(random_sample):
             t = random_sample[i]
-            vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs)
+            try:
+                vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs, get_bbox_data_for_volume=True)
+            except (KeyError, IndexError) as e:
+                vol_dat = []
+                
             if len(vol_dat) > 1 and len(vol_dat) <= 200:
                 vol_dat = np.stack(vol_dat, 0)
                 list_of_neurons_of_volumes.append(vol_dat)

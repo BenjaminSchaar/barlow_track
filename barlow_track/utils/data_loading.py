@@ -5,7 +5,7 @@ from skimage.measure import regionprops
 from wbfm.utils.external.utils_pandas import cast_int_or_nan
 
 
-def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
+def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64]), raise_if_no_neurons=False):
     """List of 3d crops for all labeled (segmented) objects at time = t"""
     # Get a bbox for all neurons in 3d
     this_seg = project_data.raw_segmentation
@@ -26,8 +26,10 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     for i, neuron in enumerate(neurons):
         try:
             bbox_or_centroid = _get_bbox(i, neuron)
-        except (IndexError, KeyError):
+        except (IndexError, KeyError) as e:
             logging.warning(f"Could not get bbox for neuron {neuron} at time {t}, skipping")
+            if raise_if_no_neurons:
+                raise e
             continue
         if np.isnan(bbox_or_centroid[0]):
             continue
