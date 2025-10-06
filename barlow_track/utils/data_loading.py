@@ -26,7 +26,7 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     for i, neuron in enumerate(neurons):
         try:
             bbox_or_centroid = _get_bbox(i, neuron)
-        except IndexError:
+        except (IndexError, KeyError):
             logging.warning(f"Could not get bbox for neuron {neuron} at time {t}, skipping")
             continue
         if np.isnan(bbox_or_centroid[0]):
