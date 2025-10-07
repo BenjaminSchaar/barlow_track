@@ -9,7 +9,7 @@ if __name__ == "__main__":
     model_parent_dir = "/lisc/data/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/"
     projects_parent_dir = "/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/analyzed_projects/"
 
-    trained_model_dirs = ['inverse_augmentation_sweep_zimmer', 'inverse_augmentation_sweep_flavell', 'inverse_augmentation_sweep_samuel']
+    trained_model_dirs = ['untrained']
     base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
     DEBUG = False
