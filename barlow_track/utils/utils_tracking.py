@@ -16,6 +16,7 @@ from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_us
 from wbfm.utils.external.utils_neuron_names import int2name_neuron
 
 from barlow_track.utils.utils_label_propagation import align_all, multi_seed_propagation
+from barlow_track.utils.utils_spectral_relabeling import spectral_sync_from_topk
 
 
 @dataclass
@@ -474,7 +475,8 @@ class WormClusterTracker:
 
         return df_cluster
     
-    def track_using_label_propagation_clusterer(self, num_seeds, num_neighbors=20, umap_projection=False):
+    def track_using_label_propagation_clusterer(self, num_seeds, num_neighbors=20, umap_projection=False, use_spectral_relabeling=True,
+                                                return_top_k=2, num_layers=100, softmax=False, tau=0.02):
         """
         Tracks objects by generating clusters via label propagation, starting with detected objects at random seed time points
 
@@ -496,12 +498,22 @@ class WormClusterTracker:
             X = self.X_svd
 
         # All the labelings, starting from different seeds
-        labelings = multi_seed_propagation(X, seed_times, self.time_index_to_linear_feature_indices, k=num_neighbors)
+        labelings, probabilities = multi_seed_propagation(X, seed_times, self.time_index_to_linear_feature_indices, k=num_neighbors,
+                                                          return_top_k=return_top_k, num_layers=num_layers, softmax=softmax, tau=tau)
 
         # Align all of the different labelings
-        all_aligned, final_labels, confidence = align_all(labelings, self.time_index_to_linear_feature_indices)
+        if use_spectral_relabeling:
+            perms, final_labels, confidence, diag = spectral_sync_from_topk(
+                labelings, probabilities, 
+                K=num_seeds, time_index_to_linear_feature_indices=self.time_index_to_linear_feature_indices, 
+                input_probability_threshold=0.1, verbose=True
+            )
+            final_labels = final_labels[:, 0]
+            confidence = confidence[:, 0]
+        else:
+            # Rolling reference
+            all_aligned, final_labels, confidence = align_all(labelings, self.time_index_to_linear_feature_indices)
 
-        # Convert to dataframe
         df_cluster = self.cluster_obj2dataframe({'labels': final_labels, 'probabilities': confidence}, 
                                                 start_volume=0, n_vols=self.num_frames, labels_are_in_feature_order=True)
     
