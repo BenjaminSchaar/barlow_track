@@ -10,14 +10,19 @@ if __name__ == "__main__":
     projects_parent_dir = "/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/analyzed_projects/"
 
     trained_model_dirs = ['inverse_augmentation_sweep_zimmer', 'inverse_augmentation_sweep_flavell', 'inverse_augmentation_sweep_samuel']
+    base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
     DEBUG = False
     
     for model_name in trained_model_dirs:
         print(f"Submitting job for {model_name}")
         parts = model_name.split('_')
-        lab_name = parts[-1]
-        new_location = os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1]))
+        if parts[-1] in base_lab_names:
+            lab_name = parts[-1]
+            new_location = os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1]))
+        else:
+            print(f"Could not identify lab name; assuming this folder should be applied to all labs")
+            new_location = [os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1])) for lab_name in base_lab_names]
         models_dir = os.path.join(model_parent_dir, model_name)
         
         create_projects_and_traces_from_barlow_folder(new_location, models_dir)

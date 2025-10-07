@@ -13,6 +13,12 @@ from wbfm.utils.projects.project_config_classes import make_project_like
 def create_projects_and_traces_from_barlow_folder(new_location, models_dir, finished_path=None, model_fname='resnet50.pth', use_projection_space=False,
          single_trial=False, use_tracklets=False, use_label_propagation=False, DEBUG=False):
 
+    if isinstance(new_location, list):
+        for loc in new_location:
+            create_projects_and_traces_from_barlow_folder(loc, models_dir, finished_path, model_fname, use_projection_space,
+                                                         single_trial, use_tracklets, use_label_propagation, DEBUG)
+        return
+
     wbfm_home = get_location_of_installed_project()
     models_dir = Path(models_dir)
     use_projection_space = use_projection_space
