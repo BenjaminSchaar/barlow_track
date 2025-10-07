@@ -29,6 +29,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                    results_subfolder=None,
                                    use_projection_space=False,
                                    to_plot_relative_accuracy=False,
+                                   clusterer_opt=None,
+                                   tracking_mode=None,
                                    DEBUG=False,
                                    **project_kwargs):
     """
@@ -58,6 +60,8 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     -------
 
     """
+    if clusterer_opt is None:
+        clusterer_opt = {}
     project_data = ProjectData.load_final_project_data(project_config, **project_kwargs)
     project_config = project_data.project_config
 
@@ -70,7 +74,12 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
 
     # Get tracking method from config
     tracking_config = project_config.get_tracking_config()
-    tracking_mode = tracking_config.config.get('barlow_tracker', {}).get('tracking_mode', 'global')
+    if tracking_mode is None:
+        tracking_mode = tracking_config.config.get('barlow_tracker', {}).get('tracking_mode', 'global')
+    else:
+        project_config.logger.info(f"Using user-specified tracking mode: {tracking_mode}")
+        tracking_config.config['barlow_tracker'] = tracking_mode
+        tracking_config.update_self_on_disk()
 
     # Check to see if the results already exist
     results_subfolder_full = project_config.resolve_relative_path(results_subfolder)
@@ -165,17 +174,15 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
                                   subfolder=results_subfolder_full)
 
     # Do the clustering
+    project_config.logger.info(f"Tracking using mode: {tracking_mode}")
     if tracking_mode == 'global':
-        project_config.logger.info("Running: track_using_global_clusterer")
         df_combined = tracker.track_using_global_clusterer()
     elif tracking_mode == 'overlapping_windows':
-        project_config.logger.info("Running: track_using_overlapping_windows")
         df_combined, all_dfs = tracker.track_using_overlapping_windows()
     elif tracking_mode == 'streaming':
-        project_config.logger.info("Running: track_using_streaming_clusterer")
         df_combined = tracker.track_using_streaming_clusterer()
     elif tracking_mode == 'label_propagation':
-        df_combined = tracker.track_using_label_propagation_clusterer()
+        df_combined = tracker.track_using_label_propagation_clusterer(**clusterer_opt)
 
     # Add metadata stored in the project
     project_config.logger.info("Adding metadata to the final dataframe")
