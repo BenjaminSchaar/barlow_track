@@ -108,14 +108,16 @@ def plot_clusters(db, Y, class_labels=True, class_label_for_noise=False):
 
 
 def plot_relative_accuracy(df_combined, project_data, results_subfolder=None, to_save=True):
-    num_frames = df_combined.shape[0] - 1
     df_base = project_data.get_final_tracks_only_finished_neurons()[0]
-    if df_base is None:
+    if df_base is None or df_base.empty:
         project_data.logger.warning("No ground truth to compare to, using all tracks instead")
         if project_data.final_tracks is None:
             project_data.logger.warning("No tracks to compare to, skipping")
             return
-        df_base = project_data.final_tracks.loc[:num_frames, :]
+        # Sometimes there may be a type mismatch between indices (float vs int)
+        num_frames = df_combined.shape[0]
+        df_base = project_data.final_tracks.iloc[:num_frames]
+        
     df_cluster_renamed, matches, conf, name_mapping = rename_columns_using_matching(df_base, df_combined,
                                                                                     try_to_fix_inf=True)
     df_all_acc = calculate_accuracy_from_dataframes(df_base, df_cluster_renamed,
