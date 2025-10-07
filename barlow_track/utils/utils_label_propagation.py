@@ -6,7 +6,6 @@ from torch_sparse import spmm
 import plotly.express as px
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-from scipy.stats import mode
 
 
 def build_knn_graph(X, k=20):

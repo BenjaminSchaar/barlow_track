@@ -18,7 +18,6 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.optimize import linear_sum_assignment
 import time
-import torch
 from tqdm.auto import tqdm
 
 
