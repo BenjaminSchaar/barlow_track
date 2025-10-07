@@ -122,7 +122,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         model.eval()
 
         # Embed using the model
-        all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space)
+        all_embeddings = embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space, DEBUG=DEBUG)
 
         linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
@@ -199,7 +199,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         plot_relative_accuracy(df_combined, project_data, results_subfolder_full)
 
 
-def embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space):
+def embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space, DEBUG=False):
     """
     Use a trained model to project a dataset into the latent space
 
@@ -207,6 +207,9 @@ def embed_using_barlow(gpu, model, project_data, target_sz, use_projection_space
     """
     from barlow_track.utils.barlow import NeuronImageWithGTDataset
     num_frames = project_data.num_frames - 1  # Why am I subtracting 1?
+    if DEBUG:
+        num_frames = min(10, num_frames)
+        logging.info(f"DEBUG mode: only embedding {num_frames} frames")
     dataset = NeuronImageWithGTDataset(project_data, num_frames, target_sz, include_untracked=True)
     logging.info(f"Using dataset: {dataset}")
     # names = dataset.which_neurons
