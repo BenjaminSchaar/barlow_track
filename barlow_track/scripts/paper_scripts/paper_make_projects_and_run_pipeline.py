@@ -10,7 +10,8 @@ if __name__ == "__main__":
     projects_parent_dir = "/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/analyzed_projects/"
 
     trained_model_dirs = [#'untrained_zimmer', 'untrained_flavell', 
-                          'untrained_samuel', 'untrained_leifer',]
+                          #'untrained_samuel', 
+                          'untrained_leifer',]
     base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
     DEBUG = False
