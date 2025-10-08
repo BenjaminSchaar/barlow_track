@@ -78,7 +78,6 @@ def greedy_top1_timewise(labels_topk, probs_topk, time_index_to_linear_feature_i
     return labels_out, probs_out
 
 
-
 def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_index_to_linear_feature_indices, 
                                         normalize_rows=True, probability_threshold=0.0):
     """
@@ -91,7 +90,6 @@ def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_ind
     """
     topk = labelings[0].shape[1]
     A_list = []
-    all_vals, all_rows, all_cols = [], [], []
     for L, P in zip(labelings, probabilities):
         L = np.array(L, dtype=int)
         P = np.array(P, dtype=float)
@@ -121,14 +119,6 @@ def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_ind
             # avoid division by zero
             row_sums[row_sums == 0] = 1.0
             vals /= row_sums[rows]
-
-        # all_vals.append(vals)
-        # all_rows.append(rows)
-        # all_cols.append(cols)
-    
-    # Determine shape of matrices based on all max of all labels seen across labelings
-    # K = max([cols.max() if len(cols)>0 else 0 for cols in all_cols]) + 1
-    # for vals, rows, cols in zip(all_vals, all_rows, all_cols):
         A = sp.csr_matrix((vals, (rows, cols)), shape=(N, K))
         A_list.append(A)
 
@@ -421,7 +411,7 @@ def enforce_temporal_uniqueness_hungarian(consensus_probs, time_index_to_linear_
 # 7) Full pipeline wrapper
 ###########################
 
-def spectral_sync_from_topk(labels_list, probs_list, K,
+def spectral_sync_from_topk(labels_list, probs_list,
                             time_index_to_linear_feature_indices,
                             do_col_weighting=True, weighting_strategy='invsqrt-count',
                             use_matrix_free=False, svd_params=None,
@@ -442,6 +432,8 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
     N, topk = labels_list[0].shape
     if time_index_to_linear_feature_indices is not None:
         topk = 1
+
+    K = max([L.max() for L in labels_list]) + 10  # ensure K is large enough
 
     # 1) build A_list
     if verbose:

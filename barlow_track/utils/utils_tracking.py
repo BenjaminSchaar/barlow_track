@@ -476,7 +476,7 @@ class WormClusterTracker:
         return df_cluster
     
     def track_using_label_propagation_clusterer(self, num_seeds=None, num_neighbors=20, umap_projection=False, use_spectral_relabeling=True,
-                                                return_top_k=2, num_layers=100, softmax=False, tau=0.02, K=200):
+                                                return_top_k=2, num_layers=100, softmax=False, tau=0.02):
         """
         Tracks objects by generating clusters via label propagation, starting with detected objects at random seed time points
 
@@ -507,7 +507,7 @@ class WormClusterTracker:
         if use_spectral_relabeling:
             perms, final_labels, confidence, diag = spectral_sync_from_topk(
                 labelings, probabilities, 
-                K=K, time_index_to_linear_feature_indices=self.time_index_to_linear_feature_indices, 
+                time_index_to_linear_feature_indices=self.time_index_to_linear_feature_indices, 
                 input_probability_threshold=0.1, verbose=True
             )
             final_labels = final_labels[:, 0]
