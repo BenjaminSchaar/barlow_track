@@ -79,7 +79,7 @@ def greedy_top1_timewise(labels_topk, probs_topk, time_index_to_linear_feature_i
 
 
 
-def prepare_A_list_from_labelings_probs(labelings, probabilities, N, time_index_to_linear_feature_indices, 
+def prepare_A_list_from_labelings_probs(labelings, probabilities, N, K, time_index_to_linear_feature_indices, 
                                         normalize_rows=True, probability_threshold=0.0):
     """
     Converts a list of N x topk label index arrays + probability arrays into
@@ -122,13 +122,13 @@ def prepare_A_list_from_labelings_probs(labelings, probabilities, N, time_index_
             row_sums[row_sums == 0] = 1.0
             vals /= row_sums[rows]
 
-        all_vals.append(vals)
-        all_rows.append(rows)
-        all_cols.append(cols)
+        # all_vals.append(vals)
+        # all_rows.append(rows)
+        # all_cols.append(cols)
     
     # Determine shape of matrices based on all max of all labels seen across labelings
-    K = max([cols.max() if len(cols)>0 else 0 for cols in all_cols]) + 1
-    for vals, rows, cols in zip(all_vals, all_rows, all_cols):
+    # K = max([cols.max() if len(cols)>0 else 0 for cols in all_cols]) + 1
+    # for vals, rows, cols in zip(all_vals, all_rows, all_cols):
         A = sp.csr_matrix((vals, (rows, cols)), shape=(N, K))
         A_list.append(A)
 
@@ -447,7 +447,7 @@ def spectral_sync_from_topk(labels_list, probs_list, K,
     if verbose:
         print("[info] Building per-run sparse matrices from top-k lists...")
         print(f"Found {len(labels_list)} labelings of shape {labels_list[0].shape}")
-    A_list = prepare_A_list_from_labelings_probs(labels_list, probs_list, N, time_index_to_linear_feature_indices,
+    A_list = prepare_A_list_from_labelings_probs(labels_list, probs_list, N, K, time_index_to_linear_feature_indices,
                                                  normalize_rows=normalize_input_rows,
                                                  probability_threshold=input_probability_threshold)
     if DEBUG:
