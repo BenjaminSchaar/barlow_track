@@ -487,7 +487,7 @@ class WormClusterTracker:
         timepoints = list(self.time_index_to_linear_feature_indices.keys())
         random.shuffle(timepoints)
         if num_seeds is None:
-            num_seeds = max(100, int(0.1 * self.num_frames))
+            num_seeds = min(100, int(0.5 * self.num_frames))
         seed_times = timepoints[:num_seeds]
 
         if umap_projection:
