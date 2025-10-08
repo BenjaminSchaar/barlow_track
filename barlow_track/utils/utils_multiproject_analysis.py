@@ -11,7 +11,7 @@ from wbfm.utils.projects.project_config_classes import make_project_like
 
 
 def create_projects_and_traces_from_barlow_folder(new_location, models_dir, finished_path=None, model_fname='resnet50.pth', use_projection_space=False,
-         single_trial=False, use_tracklets=False, use_label_propagation=False, DEBUG=False):
+         single_trial=False, use_tracklets=False, use_label_propagation=False, target_rule="traces", DEBUG=False):
 
     if isinstance(new_location, list):
         for loc in new_location:
@@ -106,7 +106,7 @@ def create_projects_and_traces_from_barlow_folder(new_location, models_dir, fini
     # Note that the script is already recursive
 
     CMD = ["bash", os.path.join(wbfm_home, 'wbfm', 'scripts', 'cluster', 'run_all_projects_in_parent_folder.sh')]
-    CMD.extend(["-t", new_location,  "-s" , "traces"])
+    CMD.extend(["-t", new_location,  "-s" , target_rule])
     if DEBUG:
         # Dryrun
         CMD.append("-n")

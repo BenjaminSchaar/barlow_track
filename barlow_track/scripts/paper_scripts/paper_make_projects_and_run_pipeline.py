@@ -10,10 +10,12 @@ if __name__ == "__main__":
     projects_parent_dir = "/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/analyzed_projects/"
 
     trained_model_dirs = [#'untrained_zimmer', 'untrained_flavell', 
-                          #'untrained_samuel', 
-                          'untrained_leifer',]
+                          #'untrained_samuel', 'untrained_leifer',
+                          'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer']
     base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
+    target_rule = "alt_barlow_embedding"
+    use_label_propagation = True
     DEBUG = False
     
     for model_name in trained_model_dirs:
@@ -27,6 +29,6 @@ if __name__ == "__main__":
             new_location = [os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1])) for lab_name in base_lab_names]
         models_dir = os.path.join(model_parent_dir, model_name)
         
-        create_projects_and_traces_from_barlow_folder(new_location, models_dir, use_label_propagation=True)
+        create_projects_and_traces_from_barlow_folder(new_location, models_dir, use_label_propagation=use_label_propagation, target_rule=target_rule)
 
     print("Finished; please check the SLURM queue for running jobs.")
