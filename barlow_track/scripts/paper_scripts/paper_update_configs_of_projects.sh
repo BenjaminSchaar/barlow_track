@@ -17,8 +17,8 @@ update_configs_for_all_labs() {
             full_path="$name_folder/$subfolder"
             if [ -d "$full_path" ]; then
                 echo "Updating config in $full_path"
-                bash "$CMD" -h
-                # bash "$CMD" -t "$full_path" -c "$cfg_to_update" -n
+                # bash "$CMD" -h
+                bash "$CMD" -t "$full_path" -c "$cfg_to_update" -n
             else
                 echo "Subfolder $subfolder does not exist in $name_folder, skipping."
             fi
