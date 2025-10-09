@@ -11,8 +11,8 @@ if __name__ == "__main__":
 
     trained_model_dirs = [#'untrained_zimmer', 'untrained_flavell', 
                           #'untrained_samuel', 
-                          'untrained_leifer',
-                          #'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer', 'inverse_augmentation_sweep_leifer', 'augmentation_sweep_leifer'
+                          #'untrained_leifer',
+                          'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer', 'inverse_augmentation_sweep_leifer', 'augmentation_sweep_leifer'
                           ]
     base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
