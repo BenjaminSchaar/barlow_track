@@ -382,9 +382,10 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
         tracker = WormClusterTracker(X_svd, **opt)
         tracker_no_svd = WormClusterTracker(X, **opt)  # This is only for debugging later
 
-        save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
-                                  time_index_to_linear_feature_indices, tracker, tracker_no_svd,
-                                  subfolder=results_subfolder_full)
+        if not DEBUG:
+            save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
+                                    time_index_to_linear_feature_indices, tracker, tracker_no_svd,
+                                    subfolder=results_subfolder_full)
 
     # Do the clustering
     project_config.logger.info(f"Tracking using mode: {tracking_mode}")
