@@ -10,9 +10,11 @@ if __name__ == "__main__":
     sweep_dirs = [#'training_data_sweep_leifer', 'baseline_leifer',
                   #'only_original_loss_leifer', 'only_new_loss_leifer'
                   ]
-    augmentation_dirs = ['inverse_augmentation_sweep_leifer', 'augmentation_sweep_leifer']
+    augmentation_dirs = ['inverse_augmentation_sweep_leifer', 
+                         #'augmentation_sweep_leifer'
+                         ]
     
-    run_locally = False
+    run_locally = True
     num_parallel_jobs = 10
     DEBUG = False
     all_p = []
