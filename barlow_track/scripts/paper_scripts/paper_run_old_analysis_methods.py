@@ -4,7 +4,7 @@ import shutil
 
 def main():
     # Root folder that contains name1, name2, ...
-    root_dir = "path/to/root/folder"
+    root_dir = "/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/analyzed_projects"
 
     for name_folder in os.listdir(root_dir):
         full_path = os.path.join(root_dir, name_folder)
