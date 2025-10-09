@@ -83,6 +83,7 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     except FileNotFoundError as e:
         # Fallback to the intermediate tracks
         if project_data.intermediate_global_tracks is None:
+            project_data.project_config.logger.warning(f"Could not find segmentation metadata or intermediate tracks at time {t}, cannot proceed")
             raise e
         else:
             mdata = project_data.intermediate_global_tracks.loc[t].unstack(level=1).dropna()

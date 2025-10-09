@@ -63,7 +63,7 @@ def create_projects_and_traces_from_barlow_folder(new_location, models_dir, fini
             project_path=project_path, 
             target_directory=new_location, 
             target_suffix=trial_name,
-            steps_to_keep=['preprocessing', 'segmentation'],
+            steps_to_keep=['preprocessing', 'segmentation', 'nwb'],
             verbose=3 if DEBUG else 0
         )
         if not barlow_model_path.is_file():

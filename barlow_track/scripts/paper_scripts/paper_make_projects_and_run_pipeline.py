@@ -10,8 +10,10 @@ if __name__ == "__main__":
     projects_parent_dir = "/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/analyzed_projects/"
 
     trained_model_dirs = [#'untrained_zimmer', 'untrained_flavell', 
-                          #'untrained_samuel', 'untrained_leifer',
-                          'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer']
+                          #'untrained_samuel', 
+                          'untrained_leifer',
+                          #'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer', 'inverse_augmentation_sweep_leifer', 'augmentation_sweep_leifer'
+                          ]
     base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
     target_rule = "alt_barlow_embedding"
