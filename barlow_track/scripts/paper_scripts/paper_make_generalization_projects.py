@@ -51,6 +51,9 @@ def main():
                 # Models come from the network_lab_name, not gt
                 models_dir = os.path.join(model_parent_dir, f"{trained_model_dir}_{network_lab_name}")
 
+                # Add yaml to gt_path
+                gt_path = os.path.join(gt_path, 'project_config.yaml')
+
                 # Target for leifer gt is different (no traces possible)
                 target_rule = target_rule_dict[gt_lab_name]
                 
