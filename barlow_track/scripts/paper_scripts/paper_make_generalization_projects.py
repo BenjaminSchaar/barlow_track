@@ -54,7 +54,8 @@ def main():
                 # Target for leifer gt is different (no traces possible)
                 target_rule = target_rule_dict[gt_lab_name]
                 
-                create_projects_and_traces_from_barlow_folder(new_location, models_dir, gt_path, use_label_propagation=use_label_propagation, target_rule=target_rule)
+                create_projects_and_traces_from_barlow_folder(new_location, models_dir, gt_path, use_label_propagation=use_label_propagation, target_rule=target_rule,
+                                                              DEBUG=DEBUG)
                 print(f"Submitting jobs for new projects in {new_location} from models in {models_dir} from gt at {gt_path}")
 
                 if DEBUG:
