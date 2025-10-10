@@ -31,7 +31,7 @@ def main():
     
     target_rule_dict = {'zimmer': "traces", 'flavell': 'traces', 'leifer': "alt_barlow_embedding"}
     use_label_propagation = True
-    DEBUG = True
+    DEBUG = False
     
     # Loop over different labs
     for gt_lab_name, gt_paths in lab_all_gt.items():
