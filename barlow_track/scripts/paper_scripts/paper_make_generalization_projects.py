@@ -41,7 +41,7 @@ def main():
                 if i == 0 and network_lab_name == gt_lab_name:
                     print(f"Skipping already analyzed gt at {gt_path} for the {network_lab_name} lab")
                     continue
-                # print(f"Submitting jobs for ground truth dataset from {gt_lab_name} for network trained on {network_lab_name} (gt_path: {gt_path})")
+                print(f"Submitting jobs for new projects in {new_location} from models in {models_dir} from gt at {gt_path}")
 
                 # Projects should be added to the network being used, not the gt path
                 gt_name = os.path.basename(gt_path)
@@ -59,7 +59,6 @@ def main():
                 
                 create_projects_and_traces_from_barlow_folder(new_location, models_dir, gt_path, use_label_propagation=use_label_propagation, target_rule=target_rule,
                                                               DEBUG=DEBUG)
-                print(f"Submitting jobs for new projects in {new_location} from models in {models_dir} from gt at {gt_path}")
 
                 if DEBUG:
                     return
