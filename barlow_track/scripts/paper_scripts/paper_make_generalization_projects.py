@@ -2,6 +2,7 @@
 
 import os
 from barlow_track.utils.utils_multiproject_analysis import create_projects_and_traces_from_barlow_folder
+from pathlib import Path
 
 
 def main():
@@ -46,6 +47,7 @@ def main():
                 gt_name = os.path.basename(gt_path)
                 new_project_dirname = f"{trained_model_dir}_generalization_{gt_lab_name}_{gt_name}"
                 new_location = os.path.join(projects_parent_dir, network_lab_name, new_project_dirname)
+                Path(new_location).mkdir(exist_ok=True)
 
                 # Models come from the network_lab_name, not gt
                 models_dir = os.path.join(model_parent_dir, f"{trained_model_dir}_{network_lab_name}")
