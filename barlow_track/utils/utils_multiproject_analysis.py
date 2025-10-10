@@ -59,13 +59,17 @@ def create_projects_and_traces_from_barlow_folder(new_location, models_dir, fini
         if DEBUG:
             print(f"[DEBUG] Model path: {barlow_model_path}")
 
-        new_project_name = make_project_like(
-            project_path=project_path, 
-            target_directory=new_location, 
-            target_suffix=trial_name,
-            steps_to_keep=['preprocessing', 'segmentation', 'nwb'],
-            verbose=3 if DEBUG else 0
-        )
+        try:
+            new_project_name = make_project_like(
+                project_path=project_path, 
+                target_directory=new_location, 
+                target_suffix=trial_name,
+                steps_to_keep=['preprocessing', 'segmentation', 'nwb'],
+                verbose=3 if DEBUG else 0
+            )
+        except FileExistsError:
+            print(f"Project already exists in folder {new_location} with for {trial_name}; skipping")
+            continue
         if not barlow_model_path.is_file():
             print(f"Warning: Model file not found: {barlow_model_path} - skipping {trial_name}")
             continue
