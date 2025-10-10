@@ -53,13 +53,13 @@ def main():
                 models_dir = os.path.join(model_parent_dir, f"{trained_model_dir}_{network_lab_name}")
 
                 # Add yaml to gt_path
-                gt_path = os.path.join(gt_path, 'project_config.yaml')
+                abs_gt_path = os.path.join(gt_path, 'project_config.yaml')
 
                 # Target for leifer gt is different (no traces possible)
                 target_rule = target_rule_dict[gt_lab_name]
                 
-                print(f"Submitting jobs for new projects in {new_location} from models in {models_dir} from gt at {gt_path}")
-                create_projects_and_traces_from_barlow_folder(new_location, models_dir, gt_path, use_label_propagation=use_label_propagation, target_rule=target_rule,
+                print(f"Submitting jobs for new projects in {new_location} from models in {models_dir} from gt at {abs_gt_path}")
+                create_projects_and_traces_from_barlow_folder(new_location, models_dir, abs_gt_path, use_label_propagation=use_label_propagation, target_rule=target_rule,
                                                               DEBUG=DEBUG)
 
                 if DEBUG:
