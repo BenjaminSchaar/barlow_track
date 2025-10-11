@@ -231,7 +231,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
         "lr": [],
         "lambd_obj": [],
         "accuracy": [],
-        "training_fraction": []
+        "train_fraction": []
     }
     detailed_result_dict = {
         "per_neuron_accuracy": [],
