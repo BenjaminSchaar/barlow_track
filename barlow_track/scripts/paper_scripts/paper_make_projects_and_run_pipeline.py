@@ -14,8 +14,8 @@ if __name__ == "__main__":
                           #'untrained_leifer',
                           #'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer', 
                           #'inverse_augmentation_sweep_leifer', 
-                          'training_data_sweep_leifer', 'only_original_loss_leifer',
-                          'training_data_sweep_flavell',
+                        #   'training_data_sweep_leifer', 'only_original_loss_leifer',
+                        #   'training_data_sweep_flavell',
                           'training_data_sweep_zimmer'
                           ]
     
