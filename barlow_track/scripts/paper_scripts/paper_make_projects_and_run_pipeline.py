@@ -14,23 +14,21 @@ if __name__ == "__main__":
                           #'untrained_leifer',
                           #'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer', 
                           #'inverse_augmentation_sweep_leifer', 
-                          'augmentation_sweep_leifer'
+                          'training_data_sweep_leifer', 'only_original_loss_leifer',
+                          'training_data_sweep_flavell',
+                          'training_data_sweep_zimmer'
                           ]
-    base_lab_names = ['zimmer', 'flavell', 'samuel', 'leifer']
     
-    target_rule = "alt_barlow_embedding"
+    target_rule_dict = {'zimmer': "traces", 'flavell': 'traces', 'leifer': "alt_barlow_embedding"}
     use_label_propagation = True
     DEBUG = False
     
     for model_name in trained_model_dirs:
         print(f"Submitting job for {model_name}")
         parts = model_name.split('_')
-        if parts[-1] in base_lab_names:
-            lab_name = parts[-1]
-            new_location = os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1]))
-        else:
-            print(f"Could not identify lab name; assuming this folder should be applied to all labs")
-            new_location = [os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1])) for lab_name in base_lab_names]
+        lab_name = parts[-1]
+        target_rule = target_rule_dict[lab_name]
+        new_location = os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1]))
         models_dir = os.path.join(model_parent_dir, model_name)
         
         create_projects_and_traces_from_barlow_folder(new_location, models_dir, use_label_propagation=use_label_propagation, target_rule=target_rule)
