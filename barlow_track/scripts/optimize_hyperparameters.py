@@ -154,8 +154,8 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
             # Local and debug jobs don't run until .result() is called.
             if job.done() or type(job) in [LocalJob, DebugJob]:
                 # The log file isn't being produced, so print the stdout instead
-                result = job.result()
                 try:
+                    result = job.result()
                     ax_client.complete_trial(trial_index=trial_index, raw_data=result)
                 except ValueError as e:
                     if direct_parameter_sweep or one_at_a_time_sweep:
@@ -163,11 +163,13 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
                         print(f"Encountered error in finishing trial {trial_index}, this is expected but may be fixable; {e}")
                     else:
                         raise e
-                jobs.remove((job, trial_index))
+                except RuntimeError as e:
+                    print(f"Encountered Error, trial {trial_index} may need to be rerun: {e}")
 
+                jobs.remove((job, trial_index))
                 # Display the current and completed trials
                 display(exp_to_df(ax_client.experiment))
-
+                
         # Schedule new jobs if there is availablity
         if direct_parameter_sweep or one_at_a_time_sweep:
             # Get a new trial manually, without using the AxClient's internal logic (it can't do a grid search)
