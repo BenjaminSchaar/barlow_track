@@ -7,10 +7,11 @@ from barlow_track.scripts.optimize_hyperparameters import optimize_hyperparamete
 if __name__ == "__main__":
     parent_dir = "/lisc/data/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/"
 
-    sweep_dirs = [#'training_data_sweep_leifer', 'baseline_leifer',
+    sweep_dirs = ['training_data_sweep_leifer', 'training_data_sweep_zimmer', 'training_data_sweep_flavell',
+                  #'baseline_leifer',
                   #'only_original_loss_leifer', 'only_new_loss_leifer'
                   ]
-    augmentation_dirs = ['inverse_augmentation_sweep_leifer', 
+    augmentation_dirs = [#'inverse_augmentation_sweep_leifer', 
                          #'augmentation_sweep_leifer'
                          ]
     
