@@ -245,13 +245,13 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
         trials = discover_trials(trial_dir)
     else:
         trials = discover_trials(project_dir)
-    print(f"Found {len(trials)} trials")
+    # print(f"Found {len(trials)} trials")
 
     # Map trials to folder names within project_dir
     all_project_dirs = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
     trial_to_project_map = {int(d.split("_")[-1]): d for d in all_project_dirs if "trial_" in d}
 
-    for trial_num in tqdm(trials):
+    for trial_num in tqdm(trials, leave=False):
         trial_name = f"trial_{trial_num}"
         trial_name_config = f"trial_{trial_num}"
         if trial_dir is not None:

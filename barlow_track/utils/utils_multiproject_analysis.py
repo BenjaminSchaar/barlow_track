@@ -11,7 +11,7 @@ from wbfm.utils.projects.project_config_classes import make_project_like
 
 
 def create_projects_and_traces_from_barlow_folder(new_location, models_dir, finished_path=None, model_fname='resnet50.pth', use_projection_space=False,
-         single_trial=False, use_tracklets=False, use_label_propagation=False, target_rule="traces", restart_rule=None, DEBUG=False):
+         single_trial=False, use_tracklets=False, use_label_propagation=False, target_rule="traces", restart_rule=None, only_create_projects=False, DEBUG=False):
 
     if isinstance(new_location, list):
         for loc in new_location:
@@ -109,13 +109,17 @@ def create_projects_and_traces_from_barlow_folder(new_location, models_dir, fini
     #########################################################################################
     # Note that the script is already recursive
 
-    CMD = ["bash", os.path.join(wbfm_home, 'wbfm', 'scripts', 'cluster', 'run_all_projects_in_parent_folder.sh')]
-    CMD.extend(["-t", new_location,  "-s" , target_rule])
-    if restart_rule is not None:
-        CMD.extend(["-R", restart_rule])
-    if DEBUG:
-        # Dryrun
-        CMD.append("-n")
-    subprocess.call(CMD)
+    if not only_create_projects:
+        CMD = ["bash", os.path.join(wbfm_home, 'wbfm', 'scripts', 'cluster', 'run_all_projects_in_parent_folder.sh')]
+        CMD.extend(["-t", new_location,  "-s" , target_rule])
+        if restart_rule is not None:
+            CMD.extend(["-R", restart_rule])
+        if DEBUG:
+            # Dryrun
+            CMD.append("-n")
+        subprocess.call(CMD)
 
-    print(f"All jobs for {len(trial_dirs)} trials in folder {new_location} submitted successfully.")
+        print(f"All jobs for {len(trial_dirs)} trials in folder {new_location} submitted successfully.")
+    else:
+
+        print(f"All projects for {len(trial_dirs)} trials in folder {new_location} created successfully, but NOT RUN.")
