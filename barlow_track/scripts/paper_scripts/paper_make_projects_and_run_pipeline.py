@@ -17,7 +17,7 @@ if __name__ == "__main__":
                           #  'training_data_sweep_leifer', #'only_original_loss_leifer',
                           #  'training_data_sweep_flavell',
                           #  'training_data_sweep_zimmer',
-                           'hyperparameter_search_leifer'
+                           'hyperparameter_sweep_leifer'
                           ]
     
     rule_opts = {'zimmer': {'target_rule': "traces"}, 'flavell': {'target_rule': "traces"}, 
