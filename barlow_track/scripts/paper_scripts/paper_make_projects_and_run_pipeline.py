@@ -19,7 +19,8 @@ if __name__ == "__main__":
                           #'training_data_sweep_zimmer'
                           ]
     
-    target_rule_dict = {'zimmer': "traces", 'flavell': 'traces', 'leifer': "alt_barlow_embedding"}
+    rule_opts = {'zimmer': {'target_rule': "traces"}, 'flavell': {'target_rule': "traces"}, 
+                 'leifer': {'target_rule': "barlow_tracking", 'restart_rule': 'alt_barlow_embedding'}}
     use_label_propagation = True
     DEBUG = False
     
@@ -27,10 +28,10 @@ if __name__ == "__main__":
         print(f"Submitting job for {model_name}")
         parts = model_name.split('_')
         lab_name = parts[-1]
-        target_rule = target_rule_dict[lab_name]
+        opts = rule_opts[lab_name]
         new_location = os.path.join(projects_parent_dir, lab_name, '_'.join(parts[:-1]))
         models_dir = os.path.join(model_parent_dir, model_name)
         
-        create_projects_and_traces_from_barlow_folder(new_location, models_dir, use_label_propagation=use_label_propagation, target_rule=target_rule)
+        create_projects_and_traces_from_barlow_folder(new_location, models_dir, use_label_propagation=use_label_propagation, **opts)
 
     print("Finished; please check the SLURM queue for running jobs.")
