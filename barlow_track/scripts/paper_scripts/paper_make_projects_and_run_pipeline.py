@@ -13,10 +13,10 @@ if __name__ == "__main__":
                           #'untrained_samuel', 
                           #'untrained_leifer',
                           #'baseline_leifer', 'only_new_loss_leifer', 'only_original_loss_leifer', 'training_data_sweep_leifer', 
-                          #'inverse_augmentation_sweep_leifer', 
+                          'inverse_augmentation_sweep_leifer', 
                         #   'training_data_sweep_leifer', 'only_original_loss_leifer',
                         #   'training_data_sweep_flavell',
-                          'training_data_sweep_zimmer'
+                          #'training_data_sweep_zimmer'
                           ]
     
     target_rule_dict = {'zimmer': "traces", 'flavell': 'traces', 'leifer': "alt_barlow_embedding"}

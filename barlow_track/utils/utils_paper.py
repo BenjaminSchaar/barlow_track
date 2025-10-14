@@ -56,7 +56,7 @@ def paper_colormap():
 
 
 def paper_category_order():
-    _cmap = {'Dataset': ['Zimmer', 'Leifer', 'Flavell']}
+    _cmap = {'Dataset': ['Zimmer', 'Leifer', 'Flavell', 'zimmer', 'leifer', 'flavell']}
     cmap = _cmap.copy()
     for k, v in _cmap.items():
         cmap[k.lower()] = v
