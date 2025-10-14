@@ -30,7 +30,7 @@ def pad_with_nan_rows(df: pd.DataFrame, target_length: int) -> pd.DataFrame:
     """
     if len(df) < target_length:
         missing_rows = target_length - len(df)
-        new_index = range(df.index.max() + 1, df.index.max() + 1 + missing_rows)
+        new_index = range(int(df.index.max()) + 1, int(df.index.max()) + 1 + missing_rows)
         nan_rows = pd.DataFrame(np.nan, index=new_index, columns=df.columns)
         return pd.concat([df, nan_rows])
     return df
