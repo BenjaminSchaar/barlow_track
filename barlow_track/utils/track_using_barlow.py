@@ -238,7 +238,7 @@ def cluster_embeddings_from_config(project_config: ModularProjectConfig,
 
 
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
-                                   model_fname=None,
+                                   model_fname,
                                    results_subfolder=None,
                                    use_projection_space=False,
                                    to_plot_relative_accuracy=False,
@@ -278,9 +278,6 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     project_data = ProjectData.load_final_project_data(project_config, **project_kwargs)
     project_config = project_data.project_config
 
-    if model_fname is None:
-        model_fname = 'checkpoint_barlow_small_projector'
-        project_data.logger.warning(f"Using default network name: {model_fname}")
     if results_subfolder is None:
         results_subfolder = '3-tracking/barlow_tracker'
         project_data.logger.info(f"Output subfolder for results: {results_subfolder}")
@@ -334,10 +331,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             fname = model_fname
             project_config.logger.info(f"Using pretrained neural network: {fname}")
         else:
-            # My draft networks are here
-            project_config.logger.warning("Using draft networks; if you want to use the final networks, use an absolute path")
-            folder_fname = '/home/charles/Current_work/repos/dlc_for_wbfm/wbfm/notebooks/nn_ideas/'
-            fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
+            raise NotImplementedError(f"Model path must be absolute; got relative path {model_fname} instead")
 
         gpu, model, args = load_barlow_model(fname)
         target_sz = get_target_size_from_args(args)
