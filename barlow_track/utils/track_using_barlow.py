@@ -30,6 +30,7 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
                                    to_plot_relative_accuracy=False,
                                    clusterer_opt=None,
                                    tracking_mode=None,
+                                   do_svd=False,
                                    DEBUG=False,
                                    **project_kwargs):
     """
@@ -138,21 +139,22 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
         linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
 
-        svd_components = 50
-        X = np.vstack(X)
-        # X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
-        project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
-                                   f"(original matrix size: {X.shape})")
-        # Use dask to do the SVD, because it may be very very tall
-        if X.shape[0] > 10000:
-            chunks = (10000, X.shape[1])
-            X_dask = da.from_array(X, chunks=chunks)
-            u, s, v = da.linalg.svd(X_dask)
-            X_svd = np.array(u[:, :svd_components].compute())
-        else:
-            alg = TruncatedSVD(n_components=svd_components)
-            X_svd = alg.fit_transform(X)
-        project_config.logger.info(f"Finished truncation")
+        if do_svd:
+            svd_components = 50
+            X = np.vstack(X)
+            # X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
+            project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
+                                    f"(original matrix size: {X.shape})")
+            # Use dask to do the SVD, because it may be very very tall
+            if X.shape[0] > 10000:
+                chunks = (10000, X.shape[1])
+                X_dask = da.from_array(X, chunks=chunks)
+                u, s, v = da.linalg.svd(X_dask)
+                X_svd = np.array(u[:, :svd_components].compute())
+            else:
+                alg = TruncatedSVD(n_components=svd_components)
+                X_svd = alg.fit_transform(X)
+            project_config.logger.info(f"Finished truncation")
 
         # Get tracker parameters from yaml file
         tracker_cfg = project_config.get_tracking_config()
@@ -461,8 +463,9 @@ def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_i
                               subfolder):
     fname = f'{subfolder}/worm_tracker_barlow.pickle'
     project_config.pickle_data_in_local_project(tracker, fname)
-    fname = f'{subfolder}/worm_tracker_barlow_full.pickle'
-    project_config.pickle_data_in_local_project(tracker_no_svd, fname)
+    if tracker_no_svd is not None:
+        fname = f'{subfolder}/worm_tracker_barlow_full.pickle'
+        project_config.pickle_data_in_local_project(tracker_no_svd, fname)
     fname = f'{subfolder}/embedding.zarr'
     fname = project_data.project_config.resolve_relative_path(fname)
     z = zarr.open_array(fname, shape=X.shape, chunks=(10000, 256))

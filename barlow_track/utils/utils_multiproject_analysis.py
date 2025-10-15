@@ -59,6 +59,10 @@ def create_projects_and_traces_from_barlow_folder(new_location, models_dir, fini
         if DEBUG:
             print(f"[DEBUG] Model path: {barlow_model_path}")
 
+        if not barlow_model_path.is_file():
+            print(f"Warning: Model file not found: {barlow_model_path} - skipping {trial_name}")
+            continue
+
         try:
             new_project_name = make_project_like(
                 project_path=project_path, 
@@ -70,10 +74,6 @@ def create_projects_and_traces_from_barlow_folder(new_location, models_dir, fini
         except FileExistsError:
             print(f"Project already exists in folder {new_location} with for {trial_name}; skipping")
             continue
-        if not barlow_model_path.is_file():
-            print(f"Warning: Model file not found: {barlow_model_path} - skipping {trial_name}")
-            continue
-
         # Two options: use tracklets or direct segmentation
         project_data = ProjectData.load_final_project_data(new_project_name, verbose=0)
         project_config = project_data.project_config
