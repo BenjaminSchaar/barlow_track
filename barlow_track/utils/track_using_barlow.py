@@ -145,6 +145,7 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
                         opt_db=tracker_cfg.config.get('opt_db', dict()))
 
         # Save embeddings and trackers
+        svd_components = 50 if project_data.num_frames > 500 else int(project_data.num_frames / 10)
         opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
                    svd_components=svd_components,
                    cluster_directly_on_svd_space=True,
@@ -154,7 +155,6 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
         opt.update(tracker_opt)
 
         if do_svd:
-            svd_components = 50
             X = np.vstack(X)
             project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
                                     f"(original matrix size: {X.shape})")
