@@ -154,8 +154,8 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
                    linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
         opt.update(tracker_opt)
 
+        X = np.vstack(X)
         if do_svd:
-            X = np.vstack(X)
             project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
                                     f"(original matrix size: {X.shape})")
             X_svd = _robust_svd(X, svd_components)
