@@ -139,6 +139,20 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
         linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
 
+        # Get tracker parameters from yaml file
+        tracker_cfg = project_config.get_tracking_config()
+        tracker_opt = dict(opt_umap=tracker_cfg.config.get('opt_umap', dict()),
+                        opt_db=tracker_cfg.config.get('opt_db', dict()))
+
+        # Save embeddings and trackers
+        opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
+                   svd_components=svd_components,
+                   cluster_directly_on_svd_space=True,
+                   n_clusters_per_window=3,
+                   n_volumes_per_window=120,
+                   linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
+        opt.update(tracker_opt)
+
         if do_svd:
             svd_components = 50
             X = np.vstack(X)
@@ -156,22 +170,12 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
                 X_svd = alg.fit_transform(X)
             project_config.logger.info(f"Finished truncation")
 
-        # Get tracker parameters from yaml file
-        tracker_cfg = project_config.get_tracking_config()
-        tracker_opt = dict(opt_umap=tracker_cfg.config.get('opt_umap', dict()),
-                        opt_db=tracker_cfg.config.get('opt_db', dict()))
-
-        # Save embeddings and trackers
-        opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
-                   svd_components=svd_components,
-                   cluster_directly_on_svd_space=True,
-                   n_clusters_per_window=3,
-                   n_volumes_per_window=120,
-                   linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
-        opt.update(tracker_opt)
-
-        tracker = WormClusterTracker(X_svd, **opt)
-        tracker_no_svd = WormClusterTracker(X, **opt)  # This is only for debugging later
+            tracker = WormClusterTracker(X_svd, **opt)
+            tracker_no_svd = WormClusterTracker(X, **opt)  # This is only for debugging later
+        else:
+            # Only save one tracker
+            tracker = WormClusterTracker(X, **opt) 
+            tracker_no_svd = None
 
         save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
