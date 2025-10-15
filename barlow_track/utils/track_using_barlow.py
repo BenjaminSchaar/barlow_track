@@ -156,18 +156,9 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
         if do_svd:
             svd_components = 50
             X = np.vstack(X)
-            # X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
             project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
                                     f"(original matrix size: {X.shape})")
-            # Use dask to do the SVD, because it may be very very tall
-            if X.shape[0] > 10000:
-                chunks = (10000, X.shape[1])
-                X_dask = da.from_array(X, chunks=chunks)
-                u, s, v = da.linalg.svd(X_dask)
-                X_svd = np.array(u[:, :svd_components].compute())
-            else:
-                alg = TruncatedSVD(n_components=svd_components)
-                X_svd = alg.fit_transform(X)
+            X_svd = _robust_svd(X, svd_components)
             project_config.logger.info(f"Finished truncation")
 
             tracker = WormClusterTracker(X_svd, **opt)
@@ -180,6 +171,20 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
         save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
                                   subfolder=results_subfolder_full)
+
+
+def _robust_svd(X, svd_components):
+
+    # Use dask to do the SVD, because it may be very very tall
+    if X.shape[0] > 10000:
+        chunks = (10000, X.shape[1])
+        X_dask = da.from_array(X, chunks=chunks)
+        u, s, v = da.linalg.svd(X_dask)
+        X_svd = np.array(u[:, :svd_components].compute())
+    else:
+        alg = TruncatedSVD(n_components=svd_components)
+        X_svd = alg.fit_transform(X)
+    return X_svd
 
 
 def cluster_embeddings_from_config(project_config: ModularProjectConfig,
@@ -210,6 +215,13 @@ def cluster_embeddings_from_config(project_config: ModularProjectConfig,
     # Do the clustering
     project_config.logger.info(f"Tracking using mode: {tracking_mode}")
     if tracking_mode == 'global':
+        # Check for svd
+        svd_components = 50
+        if tracker.X.shape[1] > svd_components:
+            project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
+                                    f"(original matrix size: {X.shape})")
+            tracker.X = _robust_svd(tracker.X, svd_components)
+            project_config.logger.info(f"Finished truncation")
         df_combined = tracker.track_using_global_clusterer()
     elif tracking_mode == 'overlapping_windows':
         df_combined, all_dfs = tracker.track_using_overlapping_windows()
