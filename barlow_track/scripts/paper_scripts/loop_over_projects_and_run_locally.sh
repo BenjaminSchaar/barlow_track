@@ -9,7 +9,7 @@ for dir in "$base_dir"/*/; do
     
     echo "Processing folder: $dir"
     
-    cd "$dir"
+    cd "$dir/snakemake"
     bash RUNME.sh -s alt_barlow_embedding -c
-    cd ..
+    cd ../..
 done
