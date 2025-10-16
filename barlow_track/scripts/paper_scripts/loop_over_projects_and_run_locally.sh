@@ -10,6 +10,6 @@ for dir in "$base_dir"/*/; do
     echo "Processing folder: $dir"
     
     cd "$dir/snakemake"
-    bash RUNME.sh -s alt_barlow_embedding -c
+    bash RUNME.sh -s traces -c
     cd ../..
 done
