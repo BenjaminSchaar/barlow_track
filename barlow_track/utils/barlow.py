@@ -193,6 +193,10 @@ class Transform:
             self.final_normalization
         ])
 
+        print("Initialized Transformation class with augmentation and probabilities:")
+        print([(_t.name, _t.probability) for _t in self.transform])
+        print([(_t.name, _t.probability) for _t in self.transform_prime])
+
     def __call__(self, x):
         y1 = self.transform(x)
         y2 = self.transform_prime(x)
