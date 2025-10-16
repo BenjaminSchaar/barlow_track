@@ -3,8 +3,8 @@
 set -euo pipefail
 
 # --- Configuration ---
-old_str="/lisc/scratch/neurobiology/zimmer/fieseler/wbfm_projects_future/"
-new_str="/lisc/data/scratch/neurobiology/zimmer/fieseler/barlow_track_paper/"
+old_str="/lisc/scratch/neurobiology/zimmer/fieseler"
+new_str="/lisc/data/scratch/neurobiology/zimmer/fieseler"
 file_name="project_config.yaml"
 
 dry_run=false
