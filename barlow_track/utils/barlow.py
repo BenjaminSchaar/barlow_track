@@ -182,7 +182,7 @@ class Transform:
             tio.RandomBlur(p=args.get('p_RandomBlur_base', 0.1)),
             self.final_normalization
         ])
-        self.transform_prime = transforms.Compose([
+        self.transform_prime = tio.transforms.Compose([
             # tio.RandomFlip(axes=(1, 2), p=args.get('p_RandomFlip', 0.0)),  # Do not flip z
             tio.RandomBlur(p=args.get('p_RandomBlur', 0.0)),
             tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 0.1)), 
