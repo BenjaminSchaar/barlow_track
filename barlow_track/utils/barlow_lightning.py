@@ -12,11 +12,11 @@ import logging
 
 
 class NeuronAugmentedImagePairDataset(Dataset):
-    def __init__(self, list_of_neurons_of_volumes):
+    def __init__(self, list_of_neurons_of_volumes, transform_args):
         self.all_volume_crops = []
         for neuron in list_of_neurons_of_volumes:
             self.all_volume_crops.append(torch.from_numpy(neuron.astype(np.float32)))
-        self.augmentor = Transform()
+        self.augmentor = Transform(transform_args)
 
     def __getitem__(self, idx):
         _idx = self.idx_biggest_to_smallest()[idx]
@@ -49,7 +49,7 @@ class NeuronCropImageDataModule(LightningDataModule):
 
     def __init__(self, batch_size=8, project_data=None, num_frames=100,
                  train_fraction=0.8, val_fraction=0.1, base_dataset_class=NeuronAugmentedImagePairDataset,
-                 crop_kwargs=None):
+                 crop_kwargs=None, transform_args=None):
         super().__init__()
         if crop_kwargs is None:
             crop_kwargs = {}
@@ -58,7 +58,8 @@ class NeuronCropImageDataModule(LightningDataModule):
         self.num_frames = num_frames
         self.train_fraction = train_fraction
         self.val_fraction = val_fraction
-        self.base_dataset_class = base_dataset_class
+        # Always pass args to the base_dataset_class
+        self.base_dataset_class = lambda *args: base_dataset_class(*args, transform_args=transform_args)
         self.crop_kwargs = crop_kwargs
 
     def setup(self, stage: Optional[str] = None):

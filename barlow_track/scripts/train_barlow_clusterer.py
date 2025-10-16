@@ -33,7 +33,7 @@ def train_barlow_network(args):
     data_module = NeuronCropImageDataModule(project_data=project_data1, num_frames=args.num_frames, batch_size=1,
                                             train_fraction=args.train_fraction,
                                             val_fraction=args.val_fraction,
-                                            crop_kwargs=dict(target_sz=target_sz))
+                                            crop_kwargs=dict(target_sz=target_sz), transform_args=args)
     data_module.setup()
     loader = data_module.train_dataloader()
     cuda_index = os.getenv("CUDA_VISIBLE_DEVICES", 0)
