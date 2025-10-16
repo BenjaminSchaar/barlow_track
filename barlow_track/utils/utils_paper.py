@@ -105,6 +105,15 @@ def calculate_track_metrics(project_data_gt, project_data_barlow, use_traces=Fal
     return df_correlation
 
 
+def calculate_track_metrics_no_gt(project_data):
+    gt_column='raw_segmentation_id'
+
+    df = project_data.final_tracks.copy()
+    col_gt = df.copy().loc[:, (slice(None), gt_column)].droplevel(1, axis=1)
+    df_correlation = pd.DataFrame(col_gt.shape[0] - col_gt.count(), columns=['Number of gaps'])
+    df_correlation['Fraction of gaps'] = df_correlation['Number of gaps'] / project_data.num_frames
+    return df_correlation
+
 def plot_hist_and_accuracy(df, dataset, max_bin=0.25):
     color = paper_colormap()[dataset]
     
@@ -116,9 +125,9 @@ def plot_hist_and_accuracy(df, dataset, max_bin=0.25):
     x_vals = df[proxy_col].clip(lower=epsilon)
     
     # Define log-spaced bins
-    log_bins = np.logspace(np.log10(np.min([5e-3, x_vals.min()])), 
+    log_bins = np.logspace(np.log10(5e-3),#np.log10(np.min([5e-3, x_vals.min()])), 
                         #    np.log10(np.max([max_bin, x_vals.max()])), 
-                           np.log10(np.max([max_bin])), 
+                           np.log10(max_bin), 
                            10)
     
     # Make sure the last bin is larger than the max value
