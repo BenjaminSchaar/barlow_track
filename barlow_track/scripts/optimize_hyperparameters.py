@@ -117,7 +117,6 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
         all_combinations = list(product(*all_param_lists))
         all_combinations = [{parameters[i]['name']: v for i, v in enumerate(comb)} for comb in all_combinations]
         print(f"Running a direct parameter sweep with {len(all_combinations)} combinations")
-        total_budget = len(all_combinations)
     elif one_at_a_time_sweep:
         # Define all trials as a sweep of one parameter at a time
         all_combinations = []
@@ -133,13 +132,13 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
             else:
                 raise ValueError(f"For one-at-a-time parameter sweep, all parameters must be of type 'choice'; got {param['type']} for parameter {param['name']}")
         print(f"Running a one-at-a-time parameter sweep with {len(all_combinations)} combinations")
-        total_budget = len(all_combinations)
     else:
         total_budget = 5 if DEBUG else 30
 
     if direct_parameter_sweep or one_at_a_time_sweep:
         # Directly duplicate planned jobs
         all_combinations = all_combinations * repetitions
+        total_budget = len(all_combinations)
 
     if num_parallel_jobs is None:
         num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
