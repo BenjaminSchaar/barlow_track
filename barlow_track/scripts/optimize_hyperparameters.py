@@ -263,7 +263,7 @@ if __name__ == '__main__':
     direct_parameter_sweep = args.direct_parameter_sweep
     one_at_a_time_sweep = args.one_at_a_time_sweep
     job_name = args.job_name
-    repetitions = args.repetitions
+    repetitions = int(args.repetitions)
     DEBUG = args.DEBUG
 
     optimize_hyperparameters(hyperparameter_template_path, run_locally, num_parallel_jobs, 
