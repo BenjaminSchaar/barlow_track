@@ -19,7 +19,7 @@ from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
 
 
 def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
-                             direct_parameter_sweep=False, one_at_a_time_sweep=False, 
+                             direct_parameter_sweep=False, one_at_a_time_sweep=False, repetitions=1, 
                              job_name=None, DEBUG=False):
     """
     Parameters
@@ -137,6 +137,10 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
     else:
         total_budget = 5 if DEBUG else 30
 
+    if direct_parameter_sweep or one_at_a_time_sweep:
+        # Directly duplicate planned jobs
+        all_combinations = all_combinations * repetitions
+
     if num_parallel_jobs is None:
         num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
     else:
@@ -248,6 +252,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_parallel_jobs', default=None)
     parser.add_argument('--direct_parameter_sweep', action='store_true')
     parser.add_argument('--one_at_a_time_sweep', action='store_true')
+    parser.add_argument('--repetitions', default=1)
     parser.add_argument('--job_name', default=None)
     parser.add_argument('--DEBUG', action='store_true')
 
@@ -258,7 +263,8 @@ if __name__ == '__main__':
     direct_parameter_sweep = args.direct_parameter_sweep
     one_at_a_time_sweep = args.one_at_a_time_sweep
     job_name = args.job_name
+    repetitions = args.repetitions
     DEBUG = args.DEBUG
 
     optimize_hyperparameters(hyperparameter_template_path, run_locally, num_parallel_jobs, 
-         direct_parameter_sweep, one_at_a_time_sweep, job_name, DEBUG=DEBUG)
+         direct_parameter_sweep, one_at_a_time_sweep, repetitions, job_name, DEBUG=DEBUG)
