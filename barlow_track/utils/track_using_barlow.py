@@ -30,6 +30,7 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
                                    to_plot_relative_accuracy=False,
                                    clusterer_opt=None,
                                    tracking_mode=None,
+                                   do_svd=False,
                                    DEBUG=False,
                                    **project_kwargs):
     """
@@ -138,28 +139,13 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
         linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, time_index_to_linear_feature_indices, X = build_embedding_metadata(
             all_embeddings, project_data)
 
-        svd_components = 50
-        X = np.vstack(X)
-        # X = np.vstack([np.vstack(list(emb.values())) for emb in all_embeddings.values()])
-        project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
-                                   f"(original matrix size: {X.shape})")
-        # Use dask to do the SVD, because it may be very very tall
-        if X.shape[0] > 10000:
-            chunks = (10000, X.shape[1])
-            X_dask = da.from_array(X, chunks=chunks)
-            u, s, v = da.linalg.svd(X_dask)
-            X_svd = np.array(u[:, :svd_components].compute())
-        else:
-            alg = TruncatedSVD(n_components=svd_components)
-            X_svd = alg.fit_transform(X)
-        project_config.logger.info(f"Finished truncation")
-
         # Get tracker parameters from yaml file
         tracker_cfg = project_config.get_tracking_config()
         tracker_opt = dict(opt_umap=tracker_cfg.config.get('opt_umap', dict()),
                         opt_db=tracker_cfg.config.get('opt_db', dict()))
 
         # Save embeddings and trackers
+        svd_components = 50 if project_data.num_frames > 500 else int(project_data.num_frames / 10)
         opt = dict(time_index_to_linear_feature_indices=time_index_to_linear_feature_indices,
                    svd_components=svd_components,
                    cluster_directly_on_svd_space=True,
@@ -168,12 +154,37 @@ def embed_using_barlow_from_config(project_config: ModularProjectConfig,
                    linear_ind_to_t_and_seg_id=linear_ind_to_t_and_seg_id)
         opt.update(tracker_opt)
 
-        tracker = WormClusterTracker(X_svd, **opt)
-        tracker_no_svd = WormClusterTracker(X, **opt)  # This is only for debugging later
+        X = np.vstack(X)
+        if do_svd:
+            project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
+                                    f"(original matrix size: {X.shape})")
+            X_svd = _robust_svd(X, svd_components)
+            project_config.logger.info(f"Finished truncation")
+
+            tracker = WormClusterTracker(X_svd, **opt)
+            tracker_no_svd = WormClusterTracker(X, **opt)  # This is only for debugging later
+        else:
+            # Only save one tracker
+            tracker = WormClusterTracker(X, **opt) 
+            tracker_no_svd = None
 
         save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_id, project_config, project_data,
                                   time_index_to_linear_feature_indices, tracker, tracker_no_svd,
                                   subfolder=results_subfolder_full)
+
+
+def _robust_svd(X, svd_components):
+
+    # Use dask to do the SVD, because it may be very very tall
+    if X.shape[0] > 10000:
+        chunks = (10000, X.shape[1])
+        X_dask = da.from_array(X, chunks=chunks)
+        u, s, v = da.linalg.svd(X_dask)
+        X_svd = np.array(u[:, :svd_components].compute())
+    else:
+        alg = TruncatedSVD(n_components=svd_components)
+        X_svd = alg.fit_transform(X)
+    return X_svd
 
 
 def cluster_embeddings_from_config(project_config: ModularProjectConfig,
@@ -204,6 +215,13 @@ def cluster_embeddings_from_config(project_config: ModularProjectConfig,
     # Do the clustering
     project_config.logger.info(f"Tracking using mode: {tracking_mode}")
     if tracking_mode == 'global':
+        # Check for svd
+        svd_components = 50
+        if tracker.X.shape[1] > svd_components:
+            project_config.logger.info(f"Truncating feature space using {svd_components} PCA components "
+                                    f"(original matrix size: {X.shape})")
+            tracker.X = _robust_svd(tracker.X, svd_components)
+            project_config.logger.info(f"Finished truncation")
         df_combined = tracker.track_using_global_clusterer()
     elif tracking_mode == 'overlapping_windows':
         df_combined, all_dfs = tracker.track_using_overlapping_windows()
@@ -238,7 +256,7 @@ def cluster_embeddings_from_config(project_config: ModularProjectConfig,
 
 
 def track_using_barlow_from_config(project_config: ModularProjectConfig,
-                                   model_fname=None,
+                                   model_fname,
                                    results_subfolder=None,
                                    use_projection_space=False,
                                    to_plot_relative_accuracy=False,
@@ -278,9 +296,6 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
     project_data = ProjectData.load_final_project_data(project_config, **project_kwargs)
     project_config = project_data.project_config
 
-    if model_fname is None:
-        model_fname = 'checkpoint_barlow_small_projector'
-        project_data.logger.warning(f"Using default network name: {model_fname}")
     if results_subfolder is None:
         results_subfolder = '3-tracking/barlow_tracker'
         project_data.logger.info(f"Output subfolder for results: {results_subfolder}")
@@ -334,10 +349,7 @@ def track_using_barlow_from_config(project_config: ModularProjectConfig,
             fname = model_fname
             project_config.logger.info(f"Using pretrained neural network: {fname}")
         else:
-            # My draft networks are here
-            project_config.logger.warning("Using draft networks; if you want to use the final networks, use an absolute path")
-            folder_fname = '/home/charles/Current_work/repos/dlc_for_wbfm/wbfm/notebooks/nn_ideas/'
-            fname = os.path.join(folder_fname, model_fname, 'resnet50.pth')
+            raise NotImplementedError(f"Model path must be absolute; got relative path {model_fname} instead")
 
         gpu, model, args = load_barlow_model(fname)
         target_sz = get_target_size_from_args(args)
@@ -467,8 +479,9 @@ def save_intermediate_results(X, linear_ind_to_gt_ind, linear_ind_to_t_and_seg_i
                               subfolder):
     fname = f'{subfolder}/worm_tracker_barlow.pickle'
     project_config.pickle_data_in_local_project(tracker, fname)
-    fname = f'{subfolder}/worm_tracker_barlow_full.pickle'
-    project_config.pickle_data_in_local_project(tracker_no_svd, fname)
+    if tracker_no_svd is not None:
+        fname = f'{subfolder}/worm_tracker_barlow_full.pickle'
+        project_config.pickle_data_in_local_project(tracker_no_svd, fname)
     fname = f'{subfolder}/embedding.zarr'
     fname = project_data.project_config.resolve_relative_path(fname)
     z = zarr.open_array(fname, shape=X.shape, chunks=(10000, 256))

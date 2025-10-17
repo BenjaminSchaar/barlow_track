@@ -30,7 +30,7 @@ def pad_with_nan_rows(df: pd.DataFrame, target_length: int) -> pd.DataFrame:
     """
     if len(df) < target_length:
         missing_rows = target_length - len(df)
-        new_index = range(df.index.max() + 1, df.index.max() + 1 + missing_rows)
+        new_index = range(int(df.index.max()) + 1, int(df.index.max()) + 1 + missing_rows)
         nan_rows = pd.DataFrame(np.nan, index=new_index, columns=df.columns)
         return pd.concat([df, nan_rows])
     return df
@@ -245,13 +245,13 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
         trials = discover_trials(trial_dir)
     else:
         trials = discover_trials(project_dir)
-    print(f"Found {len(trials)} trials")
+    # print(f"Found {len(trials)} trials")
 
     # Map trials to folder names within project_dir
     all_project_dirs = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
     trial_to_project_map = {int(d.split("_")[-1]): d for d in all_project_dirs if "trial_" in d}
 
-    for trial_num in tqdm(trials):
+    for trial_num in tqdm(trials, leave=False):
         trial_name = f"trial_{trial_num}"
         trial_name_config = f"trial_{trial_num}"
         if trial_dir is not None:

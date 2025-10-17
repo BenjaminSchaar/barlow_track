@@ -324,9 +324,6 @@
             <mxPoint x="181" y="360" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="M9daOUxL0gZiDZhinBo--26" value="&lt;b&gt;&lt;font style=&quot;font-size: 24px;&quot;&gt;=&lt;/font&gt;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="M9daOUxL0gZiDZhinBo--1">
-          <mxGeometry x="1090" y="890" width="60" height="30" as="geometry" />
-        </mxCell>
         <mxCell id="M9daOUxL0gZiDZhinBo--27" value="&lt;b&gt;&lt;font style=&quot;font-size: 24px;&quot;&gt;=&lt;/font&gt;&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="M9daOUxL0gZiDZhinBo--1">
           <mxGeometry x="467" y="183.59" width="60" height="30" as="geometry" />
         </mxCell>

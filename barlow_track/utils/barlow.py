@@ -167,11 +167,11 @@ class Transform:
     def __init__(self, args=None):
         if args is None:
             args = dict()
-        else:
-            args = vars(args)  # Convert from simplenamespace
-            if args.get('p_RandomAffine_both', None) is not None:
-                args['p_RandomAffine_base'] = args['p_RandomAffine_both']
-                args['p_RandomAffine_flip'] = args['p_RandomAffine_both']
+        elif not isinstance(args, dict):
+            args = vars(args)  # Try to convert from simplenamespace
+        if args.get('p_RandomAffine_both', None) is not None:
+            args['p_RandomAffine_base'] = args['p_RandomAffine_both']
+            args['p_RandomAffine_flip'] = args['p_RandomAffine_both']
 
         # This normalization should get rid of the noise floor (~100) and keep the actual peak values
         self.final_normalization = tio.RescaleIntensity(percentiles=(5, 100))
@@ -182,7 +182,7 @@ class Transform:
             tio.RandomBlur(p=args.get('p_RandomBlur_base', 0.1)),
             self.final_normalization
         ])
-        self.transform_prime = transforms.Compose([
+        self.transform_prime = tio.transforms.Compose([
             # tio.RandomFlip(axes=(1, 2), p=args.get('p_RandomFlip', 0.0)),  # Do not flip z
             tio.RandomBlur(p=args.get('p_RandomBlur', 0.0)),
             tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 0.1)), 
@@ -192,6 +192,10 @@ class Transform:
             # tio.ZNormalization()
             self.final_normalization
         ])
+
+        print("Initialized Transformation class with augmentation and probabilities:")
+        print([(_t.name, _t.probability) for _t in self.transform])
+        print([(_t.name, _t.probability) for _t in self.transform_prime])
 
     def __call__(self, x):
         y1 = self.transform(x)
