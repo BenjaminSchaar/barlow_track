@@ -26,7 +26,7 @@ if __name__ == "__main__":
     rule_opts = {'zimmer': {'target_rule': "traces"}, 'flavell': {'target_rule': "traces"}, 
                  'leifer': {'target_rule': "barlow_tracking", 'restart_rule': 'alt_barlow_embedding'}}
     use_label_propagation = True
-    only_create_projects = True
+    only_create_projects = False
     DEBUG = False
     
     for model_name in trained_model_dirs:
