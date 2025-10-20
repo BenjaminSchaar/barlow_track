@@ -18,9 +18,9 @@ if __name__ == "__main__":
                           #  'training_data_sweep_flavell',
                           #  'training_data_sweep_zimmer',
                           #  'hyperparameter_sweep_leifer'
-                          'inverse_augmentation_sweep_flavell',
-                          'inverse_augmentation_sweep_leifer',
-                          'inverse_augmentation_sweep_zimmer',
+                          'augmentation_sweep_flavell', 'inverse_augmentation_sweep_only_original_loss_flavell',
+                          'augmentation_sweep_leifer', 'inverse_augmentation_sweep_only_original_loss_leifer',
+                          'augmentation_sweep_zimmer', 'inverse_augmentation_sweep_only_original_loss_zimmer'
                           ]
     
     rule_opts = {'zimmer': {'target_rule': "traces"}, 'flavell': {'target_rule': "traces"}, 
