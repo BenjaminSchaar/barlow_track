@@ -196,6 +196,29 @@ def extract_val_loss(trial_path):
     except Exception as e:
         print(f"Error reading {stats_path}: {e}")
         return None
+    
+
+def check_training_finished(trial_path, expected_num_epochs):
+    stats_path = os.path.join(trial_path, "log", "stats.json")
+    if not os.path.isfile(stats_path):
+        print(f"No stats.json found at {stats_path}")
+        return None
+
+    try:
+        with open(stats_path, "r") as f:
+            stats = json.load(f)
+        if "epoch" in stats[-1]:
+            if stats[-1]["epoch"] == expected_num_epochs:
+                print(f"{stats_path} shows that training didn't finish (epochs reached: {stats[-1]['epoch']})")
+                return True
+            else:
+                return False
+        else:
+            print(f"{stats_path} missing 'epoch' field")
+            return False
+    except Exception as e:
+        print(f"Error reading {stats_path}: {e}; assuming training did not finish")
+        return False
 
 
 def build_accuracy_dict(gt_path, project_dir, trial_dir=None, verbose=0):
@@ -270,6 +293,10 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None, verbose=0):
         try:
             with open(network_config_path, "r") as f:
                 config = yaml.safe_load(f)
+
+            if not check_training_finished(trial_path, config['epochs'] - 1):
+                print(f"{trial_name}: training was not finished; skipping")
+                continue
 
             result_dict["trial"].append(trial_num)
             for k in result_dict.keys():
