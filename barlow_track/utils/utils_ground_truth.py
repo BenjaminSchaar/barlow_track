@@ -221,7 +221,7 @@ def check_training_finished(trial_path, expected_num_epochs):
         return False
 
 
-def build_accuracy_dict(gt_path, project_dir, trial_dir=None, verbose=0):
+def build_accuracy_dict(gt_path, project_dir, trial_dir=None, check_if_training_finished=True, verbose=0):
     """
     Build a dictionary of accuracy metrics for all trials in the result directory.
     Assumes that each trial in the trial_dir is based on the same ground truth data.
@@ -294,7 +294,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None, verbose=0):
             with open(network_config_path, "r") as f:
                 config = yaml.safe_load(f)
 
-            if not check_training_finished(trial_path, int(config['epochs']) - 1):
+            if check_if_training_finished and not check_training_finished(trial_path, int(config['epochs']) - 1):
                 print(f"{trial_name}: training was not finished; skipping")
                 continue
 
