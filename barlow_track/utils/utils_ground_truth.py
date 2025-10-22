@@ -208,11 +208,11 @@ def check_training_finished(trial_path, expected_num_epochs):
         with open(stats_path, "r") as f:
             stats = json.load(f)
         if "epoch" in stats[-1]:
-            if stats[-1]["epoch"] != expected_num_epochs:
+            if int(stats[-1]["epoch"]) != int(expected_num_epochs):
                 print(f"{stats_path} shows that training didn't finish (epochs reached: {stats[-1]['epoch']}; expected: {expected_num_epochs})")
-                return True
-            else:
                 return False
+            else:
+                return True
         else:
             print(f"{stats_path} missing 'epoch' field")
             return False
