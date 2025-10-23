@@ -76,8 +76,12 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
     def evaluate(parameters):
         # Add the baseline parameters
         args = SimpleNamespace(**parameters)
-        test_losses = train_barlow_network(args)
-        result = test_losses['test_loss']
+        try:
+            test_losses = train_barlow_network(args)
+            result = test_losses['test_loss']
+        except (TypeError, ValueError) as e:
+            logging.warning(f"Encountered error with trial; quitting gracefully")
+            result = 1e6
         if np.isnan(result):
             result = 1e6  # More or less infinity
         return {"result": result}
