@@ -179,7 +179,7 @@ def discover_trials(trial_parent_dir):
     return sorted(trials)
 
 
-def extract_val_loss(trial_path):
+def extract_val_from_json(trial_path, key='val_loss'):
     stats_path = os.path.join(trial_path, "log", "stats.json")
     if not os.path.isfile(stats_path):
         print(f"No stats.json found at {stats_path}")
@@ -188,10 +188,10 @@ def extract_val_loss(trial_path):
     try:
         with open(stats_path, "r") as f:
             stats = json.load(f)
-        if len(stats) >= 2 and "val_loss" in stats[-2]:
-            return stats[-2]["val_loss"]
+        if len(stats) >= 2 and key in stats[-2]:
+            return stats[-2][key]
         else:
-            print(f"{stats_path} too short or missing 'val_loss'")
+            print(f"{stats_path} too short or missing {key}")
             return None
     except Exception as e:
         print(f"Error reading {stats_path}: {e}")
@@ -304,7 +304,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None, check_if_training_
                     continue
                 result_dict[k].append(config.get(k))
 
-            val_loss = extract_val_loss(trial_path)
+            val_loss = extract_val_from_json(trial_path)
             result_dict["val_loss"].append(val_loss)
 
         except FileNotFoundError:

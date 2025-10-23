@@ -16,6 +16,19 @@ from ruamel.yaml import YAML
 from submitit import AutoExecutor, LocalJob, DebugJob
 from itertools import product
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
+from barlow_track.utils.utils_ground_truth import check_training_finished, discover_trials, extract_val_from_json
+
+
+def attach_prior_trial_to_ax_client(ax_client, full_params, result):
+    # keep only parameters Ax knows about
+    ax_params = {k: v for k, v in full_params.items() if k in ax_client.experiment.search_space.parameters}
+    trial_index = ax_client.attach_trial(parameters=ax_params)
+    ax_client.experiment.trials[trial_index].run_metadata = full_params
+    if not isinstance(result, tuple):
+        result = (result, 0.0)  # Fake error bars
+    ax_client.complete_trial(trial_index, raw_data=result)
+    return trial_index
+
 
 
 def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
@@ -78,6 +91,30 @@ def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_paralle
         parameters=parameters,
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
+
+    # See if there are any previously run trials, and load them
+    prior_trials = discover_trials(experiment_parent_folder)
+    if len(prior_trials) > 0:
+        logging.info(f"Discovered {len(prior_trials)} prior trials, loading...")
+        for trial_num in prior_trials:
+            trial_name = f"trial_{trial_num}"
+            trial_path = os.path.join(experiment_parent_folder, trial_name)
+            network_config_path = os.path.join(trial_path, "train_config.yaml")
+
+            try:
+                with open(network_config_path, "r") as f:
+                    config = yaml.safe_load(f)
+
+                if not check_training_finished(trial_path, int(config['epochs']) - 1):
+                    print(f"Prior trial {trial_name}: training was not finished; skipping")
+                    continue
+                loss = extract_val_from_json(trial_path, key="test_loss")
+                attach_prior_trial_to_ax_client(ax_client, config, loss)
+
+            except FileNotFoundError:
+                print(f"{trial_name}: train_config.yaml not found.")
+                continue
+
     
     # Set up SubmitIt
     # Log folder and cluster. Specify cluster='local' or cluster='debug' to run the jobs locally during development.
