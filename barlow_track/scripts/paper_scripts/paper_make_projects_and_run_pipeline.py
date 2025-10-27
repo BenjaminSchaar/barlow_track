@@ -24,7 +24,7 @@ if __name__ == "__main__":
                         #    'hyperparameter_sweep_leifer',
                            'loss_balance_sweep_flavell',
                            'loss_balance_sweep_zimmer',
-                           'loss_balance_sweep_leifer',
+                          #  'loss_balance_sweep_leifer',
                           ]
     
     rule_opts = {'zimmer': {'target_rule': "traces"}, 'flavell': {'target_rule': "traces"}, 
