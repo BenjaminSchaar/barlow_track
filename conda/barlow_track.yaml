@@ -25,7 +25,6 @@ dependencies:
   - matplotlib
   - scikit-learn
   - scikit-image
-  - networkx
   - lmfit
   - natsort
   - snakemake
@@ -45,8 +44,6 @@ dependencies:
     - ruamel.yaml
     - stardist  # Use 0.8.4 for printing fix, but not actually necessary
     - hashfs
-    - tinydb
-    - tinydb-serialization
     - openpyxl
     - pytest
     - backports.cached_property
@@ -65,11 +62,9 @@ dependencies:
     - umap-learn
     - pynwb
     - ndx_multichannel_volume
-    - arviz
     - xlrd
     - submitit
     - kaleido
     - git+https://github.com/Zimmer-lab/wbfm@main
     - git+https://github.com/Zimmer-lab/imutils@master
-    - git+https://github.com/Zimmer-lab/centerline_behavior_annotation@main
     - git+https://github.com/Zimmer-lab/barlow_track@main
