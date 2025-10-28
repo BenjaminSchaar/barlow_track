@@ -6,6 +6,7 @@ from barlow_track.utils.utils_ground_truth import calculate_accuracy
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching
 import plotly.graph_objects as go
 import pandas as pd
+import plotly.express as px
 
 
 def calculate_distance_diff(df):
@@ -88,17 +89,20 @@ def calculate_track_metrics(project_data_gt, project_data_barlow, use_traces=Fal
             num_nan[col] = df_barlow_renamed.shape[0] - df_barlow_renamed[col][gt_column].count()
             num_detections[col] = df_gt[col][gt_column].count()
 
+    num_frames = project_data_barlow.num_frames_minus_tracking_failures()
+
     df_correlation = pd.DataFrame({
         'column': list(num_detections.keys()),
         'num_detections': list(num_detections.values()),
         'num_mismatches': list(num_mismatches.values()),
         'num_misses': list(num_misses.values()),
         'Number of gaps': list(num_nan.values()),
-        'Fraction of gaps': np.array(list(num_nan.values())) / project_data_barlow.num_frames
+        'Fraction of gaps': np.array(list(num_nan.values())) / num_frames
     })
+    df_correlation['Percent tracked'] = 100*(1 - df_correlation['Fraction of gaps'])
     df_correlation['Number of mistakes'] = df_correlation['num_mismatches'] + df_correlation['num_misses']
     df_correlation['Accuracy'] = 1 - df_correlation['Number of mistakes'] / df_correlation['num_detections']
-    df_correlation['Fraction of mistakes'] = df_correlation['Number of mistakes'] / project_data_barlow.num_frames
+    df_correlation['Fraction of mistakes'] = df_correlation['Number of mistakes'] / num_frames
     if use_traces:
         df_correlation['correlation'] = list(correlations.values())
 
@@ -107,87 +111,130 @@ def calculate_track_metrics(project_data_gt, project_data_barlow, use_traces=Fal
 
 def calculate_track_metrics_no_gt(project_data):
     gt_column='raw_segmentation_id'
+    num_frames = project_data.num_frames_minus_tracking_failures()
 
     df = project_data.final_tracks.copy()
     col_gt = df.copy().loc[:, (slice(None), gt_column)].droplevel(1, axis=1)
     df_correlation = pd.DataFrame(col_gt.shape[0] - col_gt.count(), columns=['Number of gaps'])
-    df_correlation['Fraction of gaps'] = df_correlation['Number of gaps'] / project_data.num_frames
+    df_correlation['Fraction of gaps'] = df_correlation['Number of gaps'] / num_frames
+    df_correlation['Percent tracked'] = 100*(1 - df_correlation['Fraction of gaps'])
     return df_correlation
 
-def plot_hist_and_accuracy(df, dataset, max_bin=0.25):
+def plot_hist_and_accuracy(df, dataset, max_bin=100, DEBUG=False):
     color = paper_colormap()[dataset]
-    
-    proxy_col = "Fraction of gaps"
-    accuracy_col = "Accuracy"
-    
-    # Small epsilon to avoid log(0)
     epsilon = 1e-6
-    x_vals = df[proxy_col].clip(lower=epsilon)
-    
-    # Define log-spaced bins
-    log_bins = np.logspace(np.log10(5e-3),#np.log10(np.min([5e-3, x_vals.min()])), 
-                        #    np.log10(np.max([max_bin, x_vals.max()])), 
-                           np.log10(max_bin), 
-                           10)
-    
-    # Make sure the last bin is larger than the max value
+
+    proxy_col = "Percent tracked"
+    accuracy_col = "Accuracy"
+    x_vals = df[proxy_col]
+    # Log bins
+    log_bins = np.logspace(np.log10(90), np.log10(max_bin), 10)
     log_bins[-1] += epsilon
-    
-    # Bin counts (for histogram)
     counts, edges = np.histogram(x_vals, bins=log_bins)
     bin_centers = (edges[:-1] + edges[1:]) / 2
     bin_widths = edges[1:] - edges[:-1]
-    
-    # Histogram trace
+
+    # --- Histogram (left y-axis) ---
     hist_trace = go.Bar(
         x=bin_centers,
-        y=counts / counts.sum(),
+        y=100*counts / counts.sum(),
         width=bin_widths,
-        name=proxy_col,
+        name="Histogram (Fraction)",
         marker_color="lightgray",
-        # opacity=0.9,
-        yaxis="y1"
+        # opacity=0.5,
+        yaxis="y"   # left y-axis
     )
-    
-    # Create figure
-    fig = go.Figure()
-    fig.add_trace(hist_trace)
-    
-    if accuracy_col in df.columns:
-        for i, interval in enumerate(log_bins[:-1]):
-            bin_data = df[(df[proxy_col] >= log_bins[i]) & (df[proxy_col] < log_bins[i+1])][accuracy_col]
-            if len(bin_data) == 0:
-                continue  # skip empty bins
-            fig.add_trace(
-                go.Box(
-                    y=bin_data,#[accuracy_col],
-                    x=[bin_centers[i]] * len(bin_data),  # position at bin center
-                    marker_color=color,
-                    boxpoints=False,#"outliers",  # show individual points
-                    # width=bin_widths[i],
-                    yaxis="y2",
-                    name="Accuracy",
-                    showlegend=(i==0),
-                )
-            )
-    
-    # Layout
-    fig.update_layout(
-        xaxis=dict(title=f"log({proxy_col})", type="log"),
-        yaxis=dict(title="Tracks<br>(Fraction)", rangemode="tozero", showgrid=False, titlefont=dict(color='gray')),
-        yaxis2=dict(title="Accuracy", overlaying="y", side="right", #range=[0.75,1], 
-                    showgrid=False, tickformat=".0%", 
-                    color=color#titlefont=dict(color=color), #type='log'
-                   ),
-        bargap=0.05,
-        legend=dict(x=1.15, y=0.9),
-        showlegend=False,
-    )
-    
-    apply_figure_settings(fig, width_factor=0.35, height_factor=0.15)
-    
-    fig.show()
 
+    # --- Scatter (right y-axis) ---
+    if accuracy_col in df:
+        scatter_trace = go.Scatter(
+            x=df[proxy_col],
+            y=df[accuracy_col],
+            mode="markers",
+            name="Accuracy",
+            marker=dict(color=color, size=3, opacity=0.5),
+            yaxis="y2"  # right y-axis
+        )
+
+        # --- Trendline fit ---
+        # We'll fit in log-space if x is log-distributed
+        x_vals = df[proxy_col]
+        X = x_vals
+        y = df[accuracy_col]
+
+        slope, intercept = np.polyfit(X, y, 1)
+        y_pred = slope * X + intercept
+
+        # Compute R²
+        ss_res = np.sum((y - y_pred)**2)
+        ss_tot = np.sum((y - np.mean(y))**2)
+        r2 = 1 - ss_res / ss_tot
+
+        # Generate trendline points for plotting (sorted)
+        x_sorted = np.sort(x_vals)
+        y_trend = slope * x_sorted + intercept
+
+        trend_trace = go.Scatter(
+            x=x_sorted,
+            y=y_trend,
+            mode="lines",
+            name=f"Trendline (slope={slope:.3f}, R²={r2:.3f})",
+            line=dict(color=color, width=2),
+            yaxis="y2"
+        )
+
+        # --- Combine traces ---
+        fig = go.Figure(data=[hist_trace, scatter_trace, trend_trace])
+    else:
+        fig = go.Figure(data=hist_trace)
+
+    # --- Layout ---
+    fig.update_layout(
+        xaxis=dict(
+            title="Track Coverage (%)",
+            type="log",
+            range=[np.log10(log_bins[0]), np.log10(log_bins[-1])]
+        ),
+        yaxis=dict(
+            title="Tracks (%)",
+            side="left",
+            showgrid=False,
+            titlefont=dict(color="gray")
+        ),
+        # annotations=[
+        #     dict(
+        #         x=0.05,
+        #         y=0.95,
+        #         xref="paper",
+        #         yref="paper",
+        #         text=f"Slope: {slope:.2f}<br>R²: {r2:.2f}",
+        #         showarrow=False,
+        #         align="left",
+        #         bgcolor="white",
+        #         bordercolor="gray",
+        #         borderwidth=1,
+        #         opacity=0.8,
+        #         font=dict(size=12)
+        #     )
+        # ],
+        bargap=0.05,
+        showlegend=False
+    )
+    if accuracy_col in df:
+        fig.update_layout(
+            yaxis2=dict(
+                title="Accuracy",
+                overlaying="y",
+                side="right",
+                showgrid=False,
+                tickformat=".0%",
+                color=color,
+                range=[0.9, 1]
+            ),
+        )
+    apply_figure_settings(fig, width_factor=0.3, height_factor=0.15)
+
+    fig.show()
     return fig
 
 

@@ -179,7 +179,7 @@ def discover_trials(trial_parent_dir):
     return sorted(trials)
 
 
-def extract_val_loss(trial_path):
+def extract_val_from_json(trial_path, key='val_loss'):
     stats_path = os.path.join(trial_path, "log", "stats.json")
     if not os.path.isfile(stats_path):
         print(f"No stats.json found at {stats_path}")
@@ -188,17 +188,40 @@ def extract_val_loss(trial_path):
     try:
         with open(stats_path, "r") as f:
             stats = json.load(f)
-        if len(stats) >= 2 and "val_loss" in stats[-2]:
-            return stats[-2]["val_loss"]
+        if len(stats) >= 2 and key in stats[-2]:
+            return stats[-2][key]
         else:
-            print(f"{stats_path} too short or missing 'val_loss'")
+            print(f"{stats_path} too short or missing {key}")
             return None
     except Exception as e:
         print(f"Error reading {stats_path}: {e}")
         return None
+    
+
+def check_training_finished(trial_path, expected_num_epochs):
+    stats_path = os.path.join(trial_path, "log", "stats.json")
+    if not os.path.isfile(stats_path):
+        print(f"No stats.json found at {stats_path}")
+        return None
+
+    try:
+        with open(stats_path, "r") as f:
+            stats = json.load(f)
+        if "epoch" in stats[-1]:
+            if int(stats[-1]["epoch"]) != int(expected_num_epochs):
+                print(f"{stats_path} shows that training didn't finish (epochs reached: {stats[-1]['epoch']}; expected: {expected_num_epochs})")
+                return False
+            else:
+                return True
+        else:
+            print(f"{stats_path} missing 'epoch' field")
+            return False
+    except Exception as e:
+        print(f"Error reading {stats_path}: {e}; assuming training did not finish")
+        return False
 
 
-def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
+def build_accuracy_dict(gt_path, project_dir, trial_dir=None, check_if_training_finished=True, verbose=0):
     """
     Build a dictionary of accuracy metrics for all trials in the result directory.
     Assumes that each trial in the trial_dir is based on the same ground truth data.
@@ -206,7 +229,7 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
     """
 
     # Load GT once
-    project_data_gt = ProjectData.load_final_project_data(gt_path, allow_hybrid_loading=True, verbose=0)
+    project_data_gt = ProjectData.load_final_project_data(gt_path, allow_hybrid_loading=True, verbose=verbose)
     df_gt, finished_neurons = project_data_gt.get_final_tracks_only_finished_neurons()
     if df_gt is None or df_gt.empty:
         logging.warning("No finished neurons found in ground truth data, assuming all neurons are ground truth.")
@@ -249,6 +272,8 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
 
     # Map trials to folder names within project_dir
     all_project_dirs = [d for d in os.listdir(project_dir) if os.path.isdir(os.path.join(project_dir, d))]
+    if verbose >= 1:
+        print(f"Found {len(all_project_dirs)} projects in {project_dir}")
     trial_to_project_map = {int(d.split("_")[-1]): d for d in all_project_dirs if "trial_" in d}
 
     for trial_num in tqdm(trials, leave=False):
@@ -269,13 +294,17 @@ def build_accuracy_dict(gt_path, project_dir, trial_dir=None):
             with open(network_config_path, "r") as f:
                 config = yaml.safe_load(f)
 
+            if check_if_training_finished and not check_training_finished(trial_path, int(config['epochs']) - 1):
+                print(f"{trial_name}: training was not finished; skipping")
+                continue
+
             result_dict["trial"].append(trial_num)
             for k in result_dict.keys():
                 if k in ["trial", "accuracy", "val_loss"]:
                     continue
                 result_dict[k].append(config.get(k))
 
-            val_loss = extract_val_loss(trial_path)
+            val_loss = extract_val_from_json(trial_path)
             result_dict["val_loss"].append(val_loss)
 
         except FileNotFoundError:
