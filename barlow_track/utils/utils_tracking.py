@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+import random
 import numpy as np
 import pandas as pd
 from backports.cached_property import cached_property
@@ -12,14 +13,17 @@ import hdbscan
 from wbfm.utils.external.utils_pandas import fill_missing_indices_with_nan
 from wbfm.utils.neuron_matching.utils_candidate_matches import rename_columns_using_matching, \
     combine_dataframes_using_mode, combine_and_rename_multiple_dataframes
-from wbfm.utils.projects.project_config_classes import ModularProjectConfig
 from wbfm.utils.external.utils_neuron_names import int2name_neuron
+
+from barlow_track.utils.utils_label_propagation import align_all, multi_seed_propagation
+from barlow_track.utils.utils_spectral_relabeling import spectral_sync_from_topk
 
 
 @dataclass
-class WormTsneTracker:
+class WormClusterTracker:
     X_svd: np.array
     time_index_to_linear_feature_indices: dict
+    linear_ind_to_t_and_seg_id: dict = None
     linear_ind_to_raw_neuron_ind: dict = None
 
     n_clusters_per_window: int = 5
@@ -27,7 +31,7 @@ class WormTsneTracker:
     tracker_stride: int = None
 
     cluster_directly_on_svd_space: bool = True  # i.e. do not use tsne
-    opt_tsne: dict = None
+    opt_umap: dict = None
     opt_db: dict = None
     svd_components: int = 50
 
@@ -44,11 +48,33 @@ class WormTsneTracker:
 
     def __post_init__(self):
         # Parameters should be optimized
-        self.opt_tsne = dict(n_components=2, perplexity=10, early_exaggeration=200, force_magnify_iters=500)
-        self.opt_db = dict(min_cluster_size=int(0.6*self.n_volumes_per_window),
-                           min_samples=int(0.1*self.n_volumes_per_window),
-                           max_cluster_size=int(1.1*self.n_volumes_per_window),
-                           cluster_selection_method='leaf')
+        default_opt_db = dict(
+            min_cluster_size=int(0.5 * self.num_frames),
+            min_samples=int(0.02 * self.num_frames),
+            cluster_selection_method='leaf'
+        )
+
+        default_opt_umap = dict(n_components=10, n_neighbors=10)
+
+        if self.opt_db is not None:
+            default_opt_db.update(self.opt_db)
+            self.opt_db = default_opt_db
+        # If min_cluster_size or min_samples are floats, then multiply them by the number of frames and continue
+        if self.opt_db['min_samples'] < 1:
+            self.opt_db['min_samples'] = int(self.opt_db['min_samples']*self.num_frames)
+        if self.opt_db['min_cluster_size'] < 1:
+            self.opt_db['min_cluster_size'] = int(self.opt_db['min_cluster_size']*self.num_frames)
+        # Also there are minimum values
+        if self.opt_db['min_samples'] < 1:
+            logging.warning(f"min_samples ({self.opt_db['min_samples']}) was below minimum value, setting to 1")
+            self.opt_db['min_samples'] = 1
+        if self.opt_db['min_cluster_size'] < 2:
+            logging.warning(f"min_cluster_size ({self.opt_db['min_cluster_size']}) was below minimum value, setting to 2")
+            self.opt_db['min_cluster_size'] = 2
+
+        if self.opt_umap is not None:
+            default_opt_umap.update(self.opt_umap)
+            self.opt_umap = default_opt_umap
 
         if self.tracker_stride is None:
             self.tracker_stride = int(0.5 * self.n_volumes_per_window)
@@ -72,8 +98,22 @@ class WormTsneTracker:
         all_start_volumes.append(self.num_frames - self.n_volumes_per_window - 1)
         return all_start_volumes
 
+    def get_raw_neuron_ind_from_linear_ind(self, linear_ind):
+        """
+        Get the raw neuron index from the linear index.
+        This is useful for tracking and clustering.
+        """
+        if self.linear_ind_to_raw_neuron_ind is not None:
+            return self.linear_ind_to_raw_neuron_ind.get(linear_ind, None)
+        elif self.linear_ind_to_t_and_seg_id is not None:
+            # This has the same info, but is a tuple (t, raw_neuron_ind, raw_segmentation_id)
+            t_ind_seg = self.linear_ind_to_t_and_seg_id.get(linear_ind, (None, None, None))
+            return t_ind_seg[1]
+        else:
+            raise ValueError(f"Raw neuron index {linear_ind} not found in linear indices.")
+
     def cluster_obj2dataframe(self, db_svd, start_volume: int = 0, vol_ind: list = None,
-                              n_vols=None, labels_are_in_feature_order=False):
+                              n_vols=None, labels_are_in_feature_order=False, verbose=0):
         """
         Associate cluster label ids to a (time, local ind) tuple
         i.e. build a dict
@@ -93,10 +133,12 @@ class WormTsneTracker:
         -------
 
         """
-        logging.info("Converting cluster object to dataframe...")
         if isinstance(db_svd, (list, np.ndarray)):
             all_labels = db_svd
             all_likelihoods = None
+        elif isinstance(db_svd, dict):
+            all_labels = db_svd['labels']
+            all_likelihoods = db_svd['probabilities']
         else:
             all_labels = db_svd.labels_
             all_likelihoods = db_svd.probabilities_
@@ -138,7 +180,8 @@ class WormTsneTracker:
                     neuron_key = (this_neuron_name, 'raw_neuron_ind_in_list')
                     likelihood_key = (this_neuron_name, 'likelihood')
                     t = self.dict_linear_index_to_time[i]
-                    raw_neuron_ind = self.linear_ind_to_raw_neuron_ind[i]
+                    
+                    raw_neuron_ind = self.get_raw_neuron_ind_from_linear_ind(i)
                     # Only works if a full cluster object was passed
                     likelihood = all_likelihoods[i]
 
@@ -152,8 +195,9 @@ class WormTsneTracker:
                         if likelihood > previous_likelihood:
                             cluster_dict[neuron_key][t] = raw_neuron_ind
                             cluster_dict[likelihood_key][t] = likelihood
-                        # logging.warning(f"Multiple assignments found for {this_neuron_name} at t={t}, ignoring second")
-                        pass
+                        if verbose:
+                            logging.warning(f"Multiple assignments found for {this_neuron_name} at t={t}, keeping higher likelihood: \
+                                            {likelihood} vs. {previous_likelihood}")
         else:
             # Me from the future... I really don't know why I need all this!
             time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
@@ -180,7 +224,7 @@ class WormTsneTracker:
 
                     # Convert that to a time and a local segmentation
                     time_in_video = self.dict_linear_index_to_time[linear_index]
-                    raw_neuron_ind_in_list = self.linear_ind_to_raw_neuron_ind[linear_index]
+                    raw_neuron_ind_in_list = self.get_raw_neuron_ind_from_linear_ind(linear_index)
 
                     # Save in the dataframe dict
                     cluster_dict[key][time_in_video] = raw_neuron_ind_in_list
@@ -234,7 +278,6 @@ class WormTsneTracker:
         time_index_to_linear_feature_indices = self.time_index_to_linear_feature_indices
 
         # Options
-        opt_tsne = self.opt_tsne
         opt_db = self.opt_db
 
         # Get this window of data
@@ -249,10 +292,12 @@ class WormTsneTracker:
             Y_tsne_svd = X
             db_svd = HDBSCAN(**opt_db).fit(Y_tsne_svd)
         else:
-            from tsnecuda import TSNE
-            tsne = TSNE(**opt_tsne)
-            Y_tsne_svd = tsne.fit_transform(X)
-            db_svd = HDBSCAN(**opt_db).fit(Y_tsne_svd)
+            opt_umap = self.opt_umap
+            print(f"Doing UMAP projection with options: {opt_umap}")
+            from umap import UMAP
+            umap = UMAP(**opt_umap)
+            X_umap = umap.fit_transform(self.X_svd)
+            self.X_umap = X_umap
 
         return db_svd, Y_tsne_svd, linear_ind
 
@@ -390,7 +435,7 @@ class WormTsneTracker:
         self.df_final = df_combined
         return df_combined
 
-    def track_using_global_clusterer(self, umap_projection=True, umap_opt=None):
+    def track_using_global_clusterer(self, umap_projection=True, opt_umap=None):
         """
         Track using a single clustering pass over the entire dataset
 
@@ -399,39 +444,81 @@ class WormTsneTracker:
         Returns
         -------
         """
-        if umap_opt is None:
-            umap_opt = dict(n_components=10, n_neighbors=10)
+        if opt_umap is None:
+            opt_umap = self.opt_umap
+        else:
+            self.opt_umap = opt_umap
 
         # Do umap projection
         if umap_projection:
-            logging.info("Doing UMAP projection...")
-            from umap import UMAP
-            umap = UMAP(**umap_opt)
-            X_umap = umap.fit_transform(self.X_svd)
-            self.X_umap = X_umap
+            if self.X_umap is None:
+                print(f"Doing UMAP projection with options: {opt_umap}")
+                from umap import UMAP
+                umap = UMAP(**opt_umap)
+                X_umap = umap.fit_transform(self.X_svd)
+                self.X_umap = X_umap
+            else:
+                X_umap = self.X_umap 
         else:
             X_umap = self.X_svd
 
         # Cluster
-        db_opt = self.opt_db.copy()
-        # Increase the min_cluster_size and max_cluster_size, because we are clustering the entire dataset
-        db_opt['min_cluster_size'] = int(0.5 * self.num_frames)
-        db_opt['min_samples']      = int(0.02 * self.num_frames)
-        # Make sure min_samples and min_cluster_size are not too large are greater than 0
-        if db_opt['min_samples'] < 1:
-            db_opt['min_samples'] = 1
-        if db_opt['min_cluster_size'] < 1:
-            db_opt['min_cluster_size'] = 1
-        # db_opt['max_cluster_size'] = int(1.1 * self.num_frames)  # Doesn't work
-        db_opt['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
-        logging.info("Clustering...")
-        db_svd = HDBSCAN(**db_opt).fit(X_umap)
+        opt_db = self.opt_db.copy()
+        opt_db['prediction_data'] = True  # For confidence measurements, see https://hdbscan.readthedocs.io/en/latest/soft_clustering.html
+        print(f"Clustering using options: {opt_db}")
+        db_svd = HDBSCAN(**opt_db).fit(X_umap)
         self.global_clusterer = db_svd
 
         # Convert to dataframe
         df_cluster = self.cluster_obj2dataframe(db_svd, start_volume=0, n_vols=self.num_frames,
                                                 labels_are_in_feature_order=True)
 
+        return df_cluster
+    
+    def track_using_label_propagation_clusterer(self, num_seeds=None, num_neighbors=20, umap_projection=False, use_spectral_relabeling=True,
+                                                return_top_k=2, num_layers=100, softmax=False, tau=0.02):
+        """
+        Tracks objects by generating clusters via label propagation, starting with detected objects at random seed time points
+
+        These clusters are then aligned via two-step hungarian matching. For each labeling:
+            Match labels to a reference labeling
+            Then update the reference labeling by matching for each time slice
+        """
+        timepoints = list(self.time_index_to_linear_feature_indices.keys())
+        random.shuffle(timepoints)
+        if num_seeds is None:
+            num_seeds = min(100, int(0.5 * self.num_frames))
+        seed_times = timepoints[:num_seeds]
+
+        if umap_projection:
+            print(f"Doing UMAP projection with options: {self.opt_umap}")
+            from umap import UMAP
+            umap = UMAP(**self.opt_umap)
+            X_umap = umap.fit_transform(self.X_svd)
+            self.X_umap = X_umap
+        else:
+            X = self.X_svd
+
+        # All the labelings, starting from different seeds
+        labelings, probabilities = multi_seed_propagation(X, seed_times, self.time_index_to_linear_feature_indices, k=num_neighbors,
+                                                          return_top_k=return_top_k, num_layers=num_layers, softmax=softmax, tau=tau)
+
+        # Align all of the different labelings
+        if use_spectral_relabeling:
+            perms, final_labels, confidence, diag = spectral_sync_from_topk(
+                labelings, probabilities, 
+                time_index_to_linear_feature_indices=self.time_index_to_linear_feature_indices, 
+                input_probability_threshold=0.1, verbose=True
+            )
+            final_labels = final_labels[:, 0]
+            confidence = confidence[:, 0]
+        else:
+            # Rolling reference
+            all_aligned, final_labels, confidence = align_all(labelings, self.time_index_to_linear_feature_indices)
+
+        df_cluster = self.cluster_obj2dataframe({'labels': final_labels, 'probabilities': confidence}, 
+                                                start_volume=0, n_vols=self.num_frames, labels_are_in_feature_order=True)
+    
         return df_cluster
 
     def build_streaming_clusterer(self):
@@ -453,25 +540,9 @@ class WormTsneTracker:
         return df_global
 
 
-# def track_using_clusters_using_config(project_config: ModularProjectConfig, DEBUG=False):
-#     """
-#     Uses tsne + hdbscan clusters on neuron feature space as a tracker
-#
-#     Parameters
-#     ----------
-#     project_config
-#
-#     Returns
-#     -------
-#
-#     """
-#
-#     tracking_config = project_config.get_tracking_config()
-#
-#     # Track
-#     tracker = WormTsneTracker.load_from_config(project_config)
-#     df_combined, all_raw_dfs = tracker.track_using_overlapping_windows()
-#
-#     # Save
-#     fname = "3-tracking/postprocessing/df_cluster_tracker.h5"
-#     tracking_config.save_data_in_local_project(fname, df_combined, also_save_csv=True)
+def get_target_size_from_args(args):
+    try:
+        target_sz = np.array([args.target_sz_z, args.target_sz_xy, args.target_sz_xy])
+    except AttributeError:
+        target_sz = np.array(args.target_sz)
+    return target_sz

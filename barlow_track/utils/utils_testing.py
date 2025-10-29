@@ -2,7 +2,6 @@ import logging
 from collections import defaultdict
 
 import numpy as np
-import seaborn as sns
 import torch
 from matplotlib import pyplot as plt
 from sklearn import manifold
@@ -227,6 +226,7 @@ def plot_accuracy(correct_per_class=None, total_per_class=None):
     y = []
     for i in x:
         y.append(correct_per_class[i] / total_per_class[i])
+    import seaborn as sns
 
     sns.barplot(x=x, y=y)
     plt.ylabel("Fraction correct")

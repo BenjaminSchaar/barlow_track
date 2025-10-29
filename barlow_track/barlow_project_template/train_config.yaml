@@ -1,11 +1,11 @@
 # Parameters for training a BarlowTrack model
 
 # CHANGEME: these parameters are specific for each model and dataset
-project_path: "/lisc/scratch/neurobiology/zimmer/fieseler/wbfm_projects_future/barlow_tests/ZIM2165_Gcamp7b_worm1-2022_11_28/project_config.yaml"
+project_path: 
 
 # Optional (but recommended) path to a pretrained model; note that the architecture parameters must be the same for this to work
 # If you want to train from scratch, set this to null
-pretrained_model_path: /lisc/scratch/neurobiology/zimmer/wbfm/TrainedBarlow/barlow_ZIM2165_Gcamp7b_worm1-2022_11_28_from_search/trial_13/resnet50.pth  # Directly pass the .pth file of the pretrained model (the model weights)
+pretrained_model_path:  # Directly pass the .pth file of the pretrained model (the model weights)
 
 # Optional (but recommended): if you have a wandb account, you can set the project name and run name here
 wandb_name: null      # Project name
@@ -17,23 +17,30 @@ wandb_username: null  # Account name
 
 # Architecture
 projector: '2048-2048'  # Original paper argued that larger final size is better
-projector_final: 2048
-embedding_dim: 128  # Projector also gets an additional first layer of size 'embedding_dim'
+projector_final: 512
+embedding_dim: 64  # Projector also gets an additional first layer of size 'embedding_dim'
 
 backbone_kwargs:
   num_levels: 2
   f_maps: 4  # Default in paper is 64... is this super small?
 
 # Size of image crop (around each neuron) to use
-target_sz_z: 4
-target_sz_xy: 128
+target_sz_z: 8
+target_sz_xy: 64
 
 # Augmentation hyperparameters
-p_RandomFlip: 0
-p_RandomBlur: 0.25
+p_RandomAffine_both: # If set, overrides the two below
+
+# First path through the Siamese network
+p_RandomAffine_base: 1.0
+p_RandomBlur_base: 0.1
+
+# Second path; default is more augmentation
+p_RandomAffine_flip: 1.0  # A 180 degree rotation, like a flip
+p_RandomBlur: 0.0
 p_RandomAffine: 1.0  # At least one deformation should have probability 1, so that the two images are definitely different
-p_RandomElasticDeformation: 0.0
-zxy_RandomElasticDeformation: [1, 5, 5]
+p_RandomElasticDeformation: 1.0
+zxy_RandomElasticDeformation: [1, 3, 3]
 p_RandomNoise: 0.1
 std_RandomNoise: 0.25
 
@@ -45,11 +52,12 @@ epochs: 50
 lr: 0.0001
 
 num_frames: 200
-train_fraction: 0.8
-val_fraction: 0.1
+train_fraction: 0.8  # If > 1, interpreted as number of volumes not a fraction
+val_fraction: 0.1    # If > 1, interpreted as number of volumes not a fraction
+# Remainder is test set
 
 # Hyperparameters for the new (transposed) BarlowTrack loss
-lambd_obj: 0.67  # Set to 0 to not use the transposed loss
+lambd_obj: 0.67  # Set to 1 to only use the transposed loss; 0 means only original BarlowTwins loss
 
 # Debugging and logging parameters
 print_freq: 100

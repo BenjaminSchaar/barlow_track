@@ -168,3 +168,4 @@ barlow_track/scripts/wandb/
 *.pickle
 *.pth
 *.ipynb
+barlow_track/notebooks/wandb

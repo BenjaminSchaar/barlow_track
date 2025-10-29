@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import time
+import numpy as np
 from pathlib import Path
 from types import SimpleNamespace
 from IPython.core.display_functions import display
@@ -13,11 +14,37 @@ from ax.service.utils.report_utils import exp_to_df
 import yaml  # We are only using this for reading
 from ruamel.yaml import YAML
 from submitit import AutoExecutor, LocalJob, DebugJob
-
+from itertools import product
 from barlow_track.scripts.train_barlow_clusterer import train_barlow_network
+from barlow_track.utils.utils_ground_truth import check_training_finished, discover_trials, extract_val_from_json
 
 
-def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=False):
+def attach_prior_trial_to_ax_client(ax_client, full_params, result):
+    # keep only parameters Ax knows about
+    ax_params = {k: v for k, v in full_params.items() if k in ax_client.experiment.search_space.parameters}
+    trial_index = ax_client.attach_trial(parameters=ax_params)
+    ax_client.experiment.trials[trial_index].run_metadata = full_params
+    if not isinstance(result, tuple):
+        result = (result, 0.0)  # Fake error bars
+    ax_client.complete_trial(trial_index, raw_data=result)
+    return trial_index
+
+
+
+def optimize_hyperparameters(hyperparameter_path, run_locally=False, num_parallel_jobs=None, 
+                             direct_parameter_sweep=False, one_at_a_time_sweep=False, repetitions=1, 
+                             job_name=None, DEBUG=False):
+    """
+    Parameters
+    ---------------------
+    hyperparameter_path - Path to the yaml file, usually named hyperparameter_search_template.yaml
+    run_locally - Instead of the cluster, via slurm
+    num_parallel_jobs
+    direct_parameter_sweep - Generate runs as all combinations of parameters instead of optimizing (e.g. for grid search)
+    one_at_a_time_sweep - Generate runs by using only one of the hyperparameter changes at a time; the rest are defaults (e.g. for ablations)
+    job_name - SLURM job name
+
+    """
     if DEBUG:
         run_locally = True
     if hyperparameter_path is None:
@@ -49,8 +76,15 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
     def evaluate(parameters):
         # Add the baseline parameters
         args = SimpleNamespace(**parameters)
-        test_losses = train_barlow_network(args)
-        return {"result": test_losses['test_loss']}
+        try:
+            test_losses = train_barlow_network(args)
+            result = test_losses['test_loss']
+        except (TypeError, ValueError) as e:
+            logging.warning(f"Encountered error with trial; quitting gracefully")
+            result = 1e6
+        if np.isnan(result):
+            result = 1e6  # More or less infinity
+        return {"result": result}
 
     # Set up the Ax client
     ax_client = AxClient(enforce_sequential_optimization=DEBUG)
@@ -62,6 +96,29 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
         objectives={"result": ObjectiveProperties(minimize=True)},
     )
 
+    # See if there are any previously run trials, and load them
+    prior_trials = discover_trials(experiment_parent_folder)
+    if len(prior_trials) > 0:
+        logging.info(f"Discovered {len(prior_trials)} prior trials, loading...")
+        for trial_num in prior_trials:
+            trial_name = f"trial_{trial_num}"
+            trial_path = os.path.join(experiment_parent_folder, trial_name)
+            network_config_path = os.path.join(trial_path, "train_config.yaml")
+
+            try:
+                with open(network_config_path, "r") as f:
+                    config = yaml.safe_load(f)
+
+                if not check_training_finished(trial_path, int(config['epochs']) - 1):
+                    print(f"Prior trial {trial_name}: training was not finished; skipping")
+                    continue
+                loss = extract_val_from_json(trial_path, key="test_loss")
+                attach_prior_trial_to_ax_client(ax_client, config, loss)
+
+            except FileNotFoundError:
+                print(f"{trial_name}: train_config.yaml not found.")
+                continue
+    
     # Set up SubmitIt
     # Log folder and cluster. Specify cluster='local' or cluster='debug' to run the jobs locally during development.
     # When we're are ready for deployment, switch to cluster='slurm'
@@ -73,16 +130,56 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
         executor = AutoExecutor(folder=experiment_parent_folder, cluster='slurm')
         logging.info(f"Running experiments in folder: {experiment_parent_folder}")
 
-    # About 50 epochs per day
-    num_days = int(baseline_params['epochs'] / 50) + 1
+    # About 100 epochs per day
+    num_days = int(baseline_params['epochs'] / 100) + 1
     executor.update_parameters(timeout_min=65 * 12 * num_days)
     if not run_locally:
-        executor.update_parameters(slurm_time=f"{num_days}-00:00:00")
-        executor.update_parameters(cpus_per_task=16)
+        executor.update_parameters(slurm_time=f"{num_days}-12:00:00")
+        executor.update_parameters(cpus_per_task=8)
         executor.update_parameters(slurm_mem="128G")
-        executor.update_parameters(slurm_job_name="barlow_hyperparameter_search")
-        executor.update_parameters(slurm_gres="gpu:1")
-    total_budget = 5 if DEBUG else 30
+        executor.update_parameters(slurm_job_name=job_name if job_name is not None else "barlow_hyperparameter_search")
+        executor.update_parameters(slurm_gres="shard:2")
+        executor.update_parameters(slurm_constraint="l40s|a30|t4|v100|l4")
+        executor.update_parameters(slurm_additional_parameters={"no-requeue": True})  # bash equivalent (no-arg flag): #SBATCH --no-requeue
+
+    if direct_parameter_sweep:
+        # Manually define all the trials as all combinations
+        for param in parameters:
+            all_param_lists = []
+            if param['type'] == 'choice':
+                assert 'values' in param, "For direct parameter sweep, the parameter must have a list of values"
+                # List of lists, which will be combined into a grid
+                all_param_lists.append(param['values'])
+            else:
+                raise ValueError("For direct parameter sweep, all parameters must be of type 'choice'")
+        
+        # Make a grid of all combinations as a dict of parameter name to value
+        all_combinations = list(product(*all_param_lists))
+        all_combinations = [{parameters[i]['name']: v for i, v in enumerate(comb)} for comb in all_combinations]
+        print(f"Running a direct parameter sweep with {len(all_combinations)} combinations")
+    elif one_at_a_time_sweep:
+        # Define all trials as a sweep of one parameter at a time
+        all_combinations = []
+        for i, param in enumerate(parameters):
+            if param['type'] == 'choice': 
+                assert 'values' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values or a single value"
+                for v in param['values']:
+                    all_combinations.append({param['name']: v})
+            elif param['type'] == 'fixed':  # fixed is just a choice with one value
+                # If it has been auto-converted to fixed, it won't have 'values', but just 'value'
+                assert 'value' in param, "For one-at-a-time parameter sweep, the parameter must have a list of values or a single value"
+                all_combinations.append({param['name']: param['value']})
+            else:
+                raise ValueError(f"For one-at-a-time parameter sweep, all parameters must be of type 'choice'; got {param['type']} for parameter {param['name']}")
+        print(f"Running a one-at-a-time parameter sweep with {len(all_combinations)} combinations")
+    else:
+        total_budget = 5 if DEBUG else 30
+
+    if direct_parameter_sweep or one_at_a_time_sweep:
+        # Directly duplicate planned jobs
+        all_combinations = all_combinations * repetitions
+        total_budget = len(all_combinations)
+
     if num_parallel_jobs is None:
         num_parallel_jobs = 1 if (DEBUG or run_locally) else 10
     else:
@@ -91,6 +188,7 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
     jobs = []
     submitted_jobs = 0
     trial_offset = 0
+    start_time = time.time()
 
     # Run until all the jobs have finished and our budget is used up.
     while submitted_jobs < total_budget or jobs:
@@ -99,16 +197,38 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
             # Local and debug jobs don't run until .result() is called.
             if job.done() or type(job) in [LocalJob, DebugJob]:
                 # The log file isn't being produced, so print the stdout instead
-                result = job.result()
-                ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+                try:
+                    result = job.result()
+                    ax_client.complete_trial(trial_index=trial_index, raw_data=result)
+                except ValueError as e:
+                    if direct_parameter_sweep or one_at_a_time_sweep:
+                        # We are manually managing the trials, so this is expected
+                        print(f"Encountered error in finishing trial {trial_index}, this is expected but may be fixable; {e}")
+                    else:
+                        raise e
+                except RuntimeError as e:
+                    print(f"Encountered Error, trial {trial_index} may need to be rerun: {e}")
+
                 jobs.remove((job, trial_index))
-
-                # Display the current trials.
+                # Display the current and completed trials
                 display(exp_to_df(ax_client.experiment))
-
+                
         # Schedule new jobs if there is availablity
-        trial_index_to_param, _ = ax_client.get_next_trials(
-            max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
+        if direct_parameter_sweep or one_at_a_time_sweep:
+            # Get a new trial manually, without using the AxClient's internal logic (it can't do a grid search)
+            # Use the submitted_jobs index as the start point of the next batch of trials
+
+            trial_index_to_param = {}
+            for i in range(submitted_jobs, submitted_jobs + num_parallel_jobs - len(jobs)):
+                if i >= total_budget:
+                    break
+                trial = ax_client.experiment.new_trial()
+                parameters = all_combinations[i]
+                trial_index_to_param[trial.index] = parameters
+        else:
+            trial_index_to_param, _ = ax_client.get_next_trials(
+                max_trials=min(num_parallel_jobs - len(jobs), total_budget - submitted_jobs))
+        
         for trial_index, parameters in trial_index_to_param.items():
             # Make a new folder in the parent folder
             # Find a unique folder name by incrementing trial_offset if needed
@@ -134,16 +254,26 @@ def main(hyperparameter_path, run_locally=False, num_parallel_jobs=None, DEBUG=F
             time.sleep(1)
 
         # Sleep for a bit before checking the jobs again to avoid overloading the cluster.
-        # If you have a large number of jobs, consider adding a sleep statement in the job polling loop aswell.
-        # Update every couple of minutes, because these jobs are very slow
-        time.sleep(5*60)
+        # If you have a large number of jobs, consider adding a sleep statement in the job polling loop as well
+        # Update every couple of minutes, because these jobs are very slow (usually multiple hours)
+        time.sleep(10*60)
+        print(f"Time={time.time()-start_time}. Checking status of {len(jobs)} jobs; {submitted_jobs}/{total_budget} submitted")
 
-    best_parameters, mean_and_variance, best_trial_index, best_trial_name  = ax_client.get_best_parameters()
+    out = ax_client.get_best_parameters()
+    if len(out) == 4:
+        best_parameters, mean_and_variance, best_trial_index, best_trial_name = out
+    elif len(out) == 2:
+        # older versions of Ax return only two values
+        best_parameters, mean_and_variance = out
+        best_trial_index, best_trial_name = None, None
+    else:
+        best_parameters, mean_and_variance, best_trial_index, best_trial_name = None, None, None, None
+        logging.warning(f"Could not unpack best parameters from AxClient.get_best_parameters(); got {out}")
+    
     print(f'Best set of parameters: {best_parameters}')
     print(f'Mean objective value: {mean_and_variance}')
     # The covariance is only meaningful when multiple objectives are present.
-
-    render(ax_client.get_contour_plot())
+    # render(ax_client.get_contour_plot())
 
     # Copy the best parameters and index to a file
     best_params_path = os.path.join(experiment_parent_folder, 'best_parameters.yaml')
@@ -159,12 +289,21 @@ if __name__ == '__main__':
     parser.add_argument('--hyperparameter_template_path', '-p', default=None)
     parser.add_argument('--run_locally', action='store_true')
     parser.add_argument('--num_parallel_jobs', default=None)
+    parser.add_argument('--direct_parameter_sweep', action='store_true')
+    parser.add_argument('--one_at_a_time_sweep', action='store_true')
+    parser.add_argument('--repetitions', default=1)
+    parser.add_argument('--job_name', default=None)
     parser.add_argument('--DEBUG', action='store_true')
 
     args = parser.parse_args()
     hyperparameter_template_path = args.hyperparameter_template_path
     run_locally = args.run_locally
     num_parallel_jobs = args.num_parallel_jobs
+    direct_parameter_sweep = args.direct_parameter_sweep
+    one_at_a_time_sweep = args.one_at_a_time_sweep
+    job_name = args.job_name
+    repetitions = int(args.repetitions)
     DEBUG = args.DEBUG
 
-    main(hyperparameter_template_path, run_locally, num_parallel_jobs, DEBUG=DEBUG)
+    optimize_hyperparameters(hyperparameter_template_path, run_locally, num_parallel_jobs, 
+         direct_parameter_sweep, one_at_a_time_sweep, repetitions, job_name, DEBUG=DEBUG)

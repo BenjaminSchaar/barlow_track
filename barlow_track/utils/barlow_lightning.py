@@ -8,14 +8,15 @@ from barlow_track.utils.data_loading import get_bbox_data_for_volume
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import Dataset, random_split, DataLoader
 from tqdm.auto import tqdm
+import logging
 
 
 class NeuronAugmentedImagePairDataset(Dataset):
-    def __init__(self, list_of_neurons_of_volumes):
+    def __init__(self, list_of_neurons_of_volumes, transform_args):
         self.all_volume_crops = []
         for neuron in list_of_neurons_of_volumes:
             self.all_volume_crops.append(torch.from_numpy(neuron.astype(np.float32)))
-        self.augmentor = Transform()
+        self.augmentor = Transform(transform_args)
 
     def __getitem__(self, idx):
         _idx = self.idx_biggest_to_smallest()[idx]
@@ -48,7 +49,7 @@ class NeuronCropImageDataModule(LightningDataModule):
 
     def __init__(self, batch_size=8, project_data=None, num_frames=100,
                  train_fraction=0.8, val_fraction=0.1, base_dataset_class=NeuronAugmentedImagePairDataset,
-                 crop_kwargs=None):
+                 crop_kwargs=None, transform_args=None):
         super().__init__()
         if crop_kwargs is None:
             crop_kwargs = {}
@@ -57,7 +58,8 @@ class NeuronCropImageDataModule(LightningDataModule):
         self.num_frames = num_frames
         self.train_fraction = train_fraction
         self.val_fraction = val_fraction
-        self.base_dataset_class = base_dataset_class
+        # Always pass args to the base_dataset_class
+        self.base_dataset_class = lambda *args: base_dataset_class(*args, transform_args=transform_args)
         self.crop_kwargs = crop_kwargs
 
     def setup(self, stage: Optional[str] = None):
@@ -72,9 +74,16 @@ class NeuronCropImageDataModule(LightningDataModule):
         self.list_of_neurons_of_volumes = list_of_neurons_of_volumes
 
         # transform and split
-        train_fraction = int(len(alldata) * self.train_fraction)
-        val_fraction = int(len(alldata) * self.val_fraction)
-        splits = [train_fraction, val_fraction, len(alldata) - train_fraction - val_fraction]
+        if self.train_fraction < 1.0:
+            train_fraction = int(len(alldata) * self.train_fraction)
+        else:
+            train_fraction = self.train_fraction
+        if self.val_fraction < 1.0:
+            val_fraction = int(len(alldata) * self.val_fraction)
+        else:
+            val_fraction = self.val_fraction
+        test_fraction = len(alldata) - train_fraction - val_fraction
+        splits = [train_fraction, val_fraction, test_fraction]
         trainset, valset, testset = random_split(alldata, splits)
 
         # assign to use in dataloaders
@@ -95,22 +104,31 @@ class NeuronCropImageDataModule(LightningDataModule):
 
 
 def get_crops_from_project(crop_kwargs, frames, project_data):
-    list_of_neurons_of_volumes = []
+    # Get a permutation of the entire dataset
     max_num_frames = project_data.num_frames
     random_sample = random.sample(range(max_num_frames), max_num_frames)
     
     i = 0
-    num_selected_frames = 0
-    with tqdm(total=frames, desc="Sampling frames") as pbar:
-        while i < len(random_sample) and num_selected_frames < frames:
+    selected_frames, list_of_neurons_of_volumes = [], []
+    with tqdm(total=frames, desc="Sampling volumes") as pbar:
+        while i < len(random_sample):
             t = random_sample[i]
-            vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs)
-            if len(vol_dat) != 0 and len(vol_dat) <= 200:
+            try:
+                vol_dat, _ = get_bbox_data_for_volume(project_data, t, **crop_kwargs, raise_if_no_neurons=True)
+            except (KeyError, IndexError) as e:
+                vol_dat = []
+
+            if len(vol_dat) > 1 and len(vol_dat) <= 200:
                 vol_dat = np.stack(vol_dat, 0)
                 list_of_neurons_of_volumes.append(vol_dat)
-                num_selected_frames += 1
+                selected_frames.append(t)
                 pbar.update(1)  # manually update progress when sample is valid
             i += 1
-    
-    print("Number of frames selected: " + str(len(list_of_neurons_of_volumes)))
+            if len(selected_frames) > frames:
+                break
+        else:
+            logging.warning(f"Requested {frames} volumes, but only found {len(selected_frames)} non-empty volumes; continuing")
+
+    print("Number of frames selected: " + str(len(selected_frames)))
+    print(selected_frames)
     return list_of_neurons_of_volumes

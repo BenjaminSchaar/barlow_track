@@ -1,6 +1,7 @@
 # From: http://proceedings.mlr.press/v139/zbontar21a/zbontar21a.pdf
 import concurrent.futures
 import gc
+from operator import is_
 from pathlib import Path
 import numpy as np
 import torch
@@ -59,19 +60,21 @@ class BarlowTwins3d(nn.Module):
     def forward(self, y1, y2):
         # Shape of z: neurons x features
         c_features, c_objects = self.calculate_both_correlation_matrices(y1, y2)
-        # Original loss
-        loss_original = self.original_barlow_loss(c_features)
-
-        # New object loss; use same lambd and additional lambd_obj
-        if self.args.lambd_obj == 0:
-            loss_transpose = 0
-        else:
-            loss_transpose = self.original_barlow_loss(c_objects)
+        
+        loss_transpose = torch.tensor(0.0, device=y1.device)
+        loss_original = torch.tensor(0.0, device=y1.device)
+        if self.args.lambd_obj < 1:
+            # Original loss
+            loss_original = self.loss_from_correlation_matrix(c_features)
+        if self.args.lambd_obj > 0:
+            # New object loss; use same lambd to combine on and off diagonal
+            loss_transpose = self.loss_from_correlation_matrix(c_objects)
+        
         loss = (1.0-self.args.lambd_obj) * loss_original + self.args.lambd_obj * loss_transpose
 
         return loss, loss_original, loss_transpose
 
-    def original_barlow_loss(self, c_features):
+    def loss_from_correlation_matrix(self, c_features):
         on_diag = torch.diagonal(c_features).add_(-1).pow_(2).sum()
         off_diag = off_diagonal(c_features).pow_(2).sum()
         loss_features = (on_diag + self.args.lambd * off_diag) / c_features.numel()
@@ -164,25 +167,35 @@ class Transform:
     def __init__(self, args=None):
         if args is None:
             args = dict()
-        else:
-            args = vars(args)  # Convert from simplenamespace
+        elif not isinstance(args, dict):
+            args = vars(args)  # Try to convert from simplenamespace
+        if args.get('p_RandomAffine_both', None) is not None:
+            args['p_RandomAffine_base'] = args['p_RandomAffine_both']
+            args['p_RandomAffine_flip'] = args['p_RandomAffine_both']
 
         # This normalization should get rid of the noise floor (~100) and keep the actual peak values
         self.final_normalization = tio.RescaleIntensity(percentiles=(5, 100))
         self.final_normalization_no_copy = tio.RescaleIntensity(percentiles=(5, 100), copy=False)
 
         self.transform = tio.transforms.Compose([
+            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine_base', 1.0)),
+            tio.RandomBlur(p=args.get('p_RandomBlur_base', 0.1)),
             self.final_normalization
         ])
-        self.transform_prime = transforms.Compose([
-            tio.RandomFlip(axes=(1, 2), p=args.get('p_RandomFlip', 0.0)),  # Do not flip z
-            tio.RandomBlur(p=args.get('p_RandomBlur', 0.25)),
-            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 1.0)),  # Also allows scaling
-            tio.RandomElasticDeformation(max_displacement=args.get('zxy_RandomElasticDeformation', (1, 5, 5)), p=args.get('p_RandomElasticDeformation', 0.0)),
+        self.transform_prime = tio.transforms.Compose([
+            # tio.RandomFlip(axes=(1, 2), p=args.get('p_RandomFlip', 0.0)),  # Do not flip z
+            tio.RandomBlur(p=args.get('p_RandomBlur', 0.0)),
+            tio.RandomAffine(degrees=(180, 0, 0), p=args.get('p_RandomAffine', 0.1)), 
+            tio.RandomAffine(degrees=(180, 180, 0, 0, 0, 0), p=args.get('p_RandomAffine_flip', 0.1)), # A 180 degree rotation, like a flip
+            tio.RandomElasticDeformation(max_displacement=args.get('zxy_RandomElasticDeformation', (1, 3, 3)), p=args.get('p_RandomElasticDeformation', 0.0)),
             tio.RandomNoise(std=args.get('std_RandomNoise', 0.25), p=args.get('p_RandomNoise', 0.1)),
             # tio.ZNormalization()
             self.final_normalization
         ])
+
+        print("Initialized Transformation class with augmentation and probabilities:")
+        print([(_t.name, _t.probability) for _t in self.transform])
+        print([(_t.name, _t.probability) for _t in self.transform_prime])
 
     def __call__(self, x):
         y1 = self.transform(x)
@@ -271,6 +284,12 @@ class NeuronImageWithGTDataset(Dataset):
         self.which_neurons = project_data.get_list_of_finished_neurons()[1]
         self.include_untracked = include_untracked
 
+        try:
+            _ = self.project_data.segmentation_metadata
+        except FileNotFoundError:
+            assert project_data.intermediate_global_tracks is not None, "Need either raw segmentation metadata or intermediate_global_tracks"
+            logging.warning("No raw segmentation metadata found, using intermediate_global_tracks instead")
+
     def _normalize(self, x):
         # Note: applied to crops, not full volumes
         t = self._transform.final_normalization_no_copy
@@ -343,12 +362,14 @@ def load_barlow_model(model_fname):
     Loads a model directly from the weights file, and assumes the args are saved in the same folder as args.pickle
 
     """
+    if model_fname is None or not Path(model_fname).exists():
+        raise FileNotFoundError(f"Model file not found: {model_fname}")
     from barlow_track.utils.siamese import ResidualEncoder3D
-    state_dict = torch.load(model_fname)
+    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    state_dict = torch.load(model_fname, map_location=gpu)
     if state_dict.get('model', None) is not None:
         # Then this was a saved checkpoint, and we should load just the model
         state_dict = state_dict['model']
-    gpu = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {gpu}")
     # Check if there are multiple .pickle files in the same folder, and give a warning if so
     for fname in Path(model_fname).parent.glob('*.pickle'):

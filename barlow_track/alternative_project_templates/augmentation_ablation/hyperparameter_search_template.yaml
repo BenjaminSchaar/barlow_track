@@ -1,0 +1,25 @@
+# Template for searching through augmentation ablations
+# Should be used with --one_at_a_time_sweep flag in optimize_hyperparameters.py
+
+baseline_params_path: null
+
+hyperparameters:
+  - name: p_RandomBlur_base
+    type: choice
+    values: [0.0]
+
+  - name: p_RandomAffine_both
+    type: choice
+    values: [0.0]
+
+  - name: p_RandomElasticDeformation
+    type: choice
+    values: [0.0]
+
+  - name: p_RandomAffine_flip
+    type: choice
+    values: [0.0]
+
+  - name: p_RandomNoise
+    type: choice
+    values: [0.0]

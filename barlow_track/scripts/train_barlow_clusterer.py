@@ -33,7 +33,7 @@ def train_barlow_network(args):
     data_module = NeuronCropImageDataModule(project_data=project_data1, num_frames=args.num_frames, batch_size=1,
                                             train_fraction=args.train_fraction,
                                             val_fraction=args.val_fraction,
-                                            crop_kwargs=dict(target_sz=target_sz))
+                                            crop_kwargs=dict(target_sz=target_sz), transform_args=args)
     data_module.setup()
     loader = data_module.train_dataloader()
     cuda_index = os.getenv("CUDA_VISIBLE_DEVICES", 0)
@@ -125,19 +125,18 @@ def train_barlow_network(args):
                             with torch.no_grad():
                                 c = model.calculate_correlation_matrix(y1, y2)
                                 save_fname = os.path.join(args.project_dir, 'log', f'correlation_matrix_{step}.png')
-                                fig = visualize_model_performance(c, save_fname=save_fname,
-                                                                    vmin=-0.5, vmax=1)
+                                fig = visualize_model_performance(c, save_fname=save_fname, vmin=-0.5, vmax=1)
                                 if run is not None:
                                     run.log({"chart": fig})
 
             if args.rank == 0:
                 # save checkpoint
-                state = dict(epoch=epoch + 1, model=model.state_dict(),
-                                optimizer=optimizer.state_dict())
+                state = dict(epoch=epoch + 1, model=model.state_dict(), optimizer=optimizer.state_dict())
                 torch.save(state, checkpoint_file)
                 # Calculate validation loss
                 with torch.no_grad():
                     val_loss, val_loss_original, val_loss_transpose = 0, 0, 0
+                    c = None
                     for val_step, (y1, y2) in enumerate(data_module.val_dataloader()):
                         y1, y2 = _format_vectors_on_gpu(y1, y2, gpu)
                         loss, loss_original, loss_transpose = model.forward(y1, y2)
@@ -145,10 +144,15 @@ def train_barlow_network(args):
                         val_loss_original += loss_original.item()
                         val_loss_transpose += loss_transpose.item()
                         # Plot validation embedding
-                        if val_step == 0 and run is not None:
+                        if run is not None:
+                            if c is None:
                                 c = model.calculate_correlation_matrix(y1, y2)
-                                fig = visualize_model_performance(c, save_fname=None, vmin=-0.5, vmax=1)
-                                run.log({"validation_chart": fig})
+                            else:
+                                c += model.calculate_correlation_matrix(y1, y2)
+                    if run is not None and c is not None:
+                        c /= val_step  # Plot the average
+                        fig = visualize_model_performance(c, save_fname=None, vmin=-0.5, vmax=1)
+                        run.log({"validation_chart": fig})
 
                 val_losses = {"val_loss": val_loss, "val_loss_original": val_loss_original, "val_loss_transpose": val_loss_transpose}
                 if run is not None:

@@ -5,14 +5,14 @@ from skimage.measure import regionprops
 from wbfm.utils.external.utils_pandas import cast_int_or_nan
 
 
-def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
+def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64]), raise_if_no_neurons=False):
     """List of 3d crops for all labeled (segmented) objects at time = t"""
     # Get a bbox for all neurons in 3d
     this_seg = project_data.raw_segmentation
     if this_seg is None:
         # Then we try to use the centroids directly
         df_tracks = project_data.intermediate_global_tracks
-        _get_bbox = lambda i, neuron: df_tracks.loc[t, (neuron, ['z', 'x', 'y'])]
+        _get_bbox = lambda i, neuron: df_tracks.loc[t, (neuron, ['z', 'x', 'y'])].values
         neurons = df_tracks.columns.get_level_values(0).unique()
     else:
         props = regionprops(this_seg[t, ...])
@@ -24,7 +24,13 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
     sz = project_data.red_data.shape
 
     for i, neuron in enumerate(neurons):
-        bbox_or_centroid = _get_bbox(i, neuron)
+        try:
+            bbox_or_centroid = _get_bbox(i, neuron)
+        except (IndexError, KeyError) as e:
+            logging.warning(f"Could not get bbox for neuron {neuron} at time {t}, skipping")
+            if raise_if_no_neurons:
+                raise e
+            continue
         if np.isnan(bbox_or_centroid[0]):
             continue
 
@@ -39,7 +45,7 @@ def get_bbox_data_for_volume(project_data, t, target_sz=np.array([8, 64, 64])):
 def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 64, 64]), which_neurons=None,
                                         include_untracked=False):
     """
-    Like get_bbox_data_for_volume, but only returns objects that have an ID in the final tracks
+    Like get_bbox_data_for_volume, but only returns objects that have an ID in the final tracks (unless include_untracked=True)
     Instead of returning a list of arrays, returns a dict indexed by the string name as found in project_data
     """
     if which_neurons is None:
@@ -71,8 +77,16 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
     sz = project_data.red_data.shape
 
     # Use the metadata as calculated in the project
-    row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t, as_dataframe=False)
-    mdata = pd.DataFrame(dict(zip(column_names, row_data)))
+    try:
+        row_data, column_names = project_data.segmentation_metadata.get_all_neuron_metadata_for_single_time(t, as_dataframe=False)
+        mdata = pd.DataFrame(dict(zip(column_names, row_data)))
+    except FileNotFoundError as e:
+        # Fallback to the intermediate tracks
+        if project_data.intermediate_global_tracks is None:
+            project_data.project_config.logger.warning(f"Could not find segmentation metadata or intermediate tracks at time {t}, cannot proceed")
+            raise e
+        else:
+            mdata = project_data.intermediate_global_tracks.loc[t].unstack(level=1).dropna()
 
     for i, row in mdata.iterrows():
         this_seg_label = int(row['raw_segmentation_id'])
@@ -83,8 +97,11 @@ def get_bbox_data_for_volume_with_label(project_data, t, target_sz=np.array([8, 
                 continue
             else:
                 # Make a unique name for this untracked object, but keep the correct label
-                ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
-                this_name = f"untracked_time_{t}_{ind_in_list}"
+                try:
+                    ind_in_list = project_data.segmentation_metadata.mask_index_to_i_in_array(t, this_seg_label)
+                except FileNotFoundError:
+                    ind_in_list = int(row['raw_neuron_ind_in_list'])
+                this_name = f"untracked_time_{t}_{ind_in_list:04d}_{this_seg_label:04d}"
         zxy = [row['z'], row['x'], row['y']]
         # Repeat to be zxyzxy
         zxyzxy = [zxy[0], zxy[1], zxy[2], zxy[0], zxy[1], zxy[2]]

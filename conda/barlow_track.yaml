@@ -1,7 +1,7 @@
-# wbfm.yaml
+# barlow_track.yaml
 
 # Made by Charles Fieseler
-# update:  conda env update -f wbfm.yaml
+# update:  mamba env update -f barlow_track.yaml
 
 # Intended to be used with the long-term support (lts) version of pytorch
 
@@ -23,10 +23,8 @@ dependencies:
   - cudatoolkit=10.0.130
   - cudnn=7.6.5
   - matplotlib
-  - torchvision
   - scikit-learn
   - scikit-image
-  - networkx
   - lmfit
   - natsort
   - snakemake
@@ -46,14 +44,11 @@ dependencies:
     - ruamel.yaml
     - stardist  # Use 0.8.4 for printing fix, but not actually necessary
     - hashfs
-    - tinydb
-    - tinydb-serialization
     - openpyxl
     - pytest
     - backports.cached_property
     - pytorch-lightning
     - wandb
-    - seaborn
     - hdbscan
     - statsmodels
     - ppca
@@ -67,11 +62,9 @@ dependencies:
     - umap-learn
     - pynwb
     - ndx_multichannel_volume
-    - arviz
     - xlrd
     - submitit
     - kaleido
-    - git:https://github.com/Zimmer-lab/wbfm@main
-    - git:https://github.com/Zimmer-lab/imutils@master
-    - git:https://github.com/Zimmer-lab/centerline_behavior_annotation@main
-    - git:https://github.com/Zimmer-lab/barlow_track@main
+    - git+https://github.com/Zimmer-lab/wbfm@main
+    - git+https://github.com/Zimmer-lab/imutils@master
+    - git+https://github.com/Zimmer-lab/barlow_track@main
