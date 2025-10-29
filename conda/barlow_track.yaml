@@ -65,6 +65,7 @@ dependencies:
     - xlrd
     - submitit
     - kaleido
+    - torch_geometric
     - git+https://github.com/Zimmer-lab/wbfm@main
     - git+https://github.com/Zimmer-lab/imutils@master
     - git+https://github.com/Zimmer-lab/barlow_track@main
