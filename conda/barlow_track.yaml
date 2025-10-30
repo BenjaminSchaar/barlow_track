@@ -41,6 +41,7 @@ dependencies:
     - networkx
     - tensorflow
     - sacred
+    - seaborn
     - ruamel.yaml
     - stardist  # Use 0.8.4 for printing fix, but not actually necessary
     - hashfs
