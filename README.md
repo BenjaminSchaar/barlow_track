@@ -5,10 +5,9 @@ Using a modification of Barlow Twins (self-supervised learning) to track single-
 
 ### Install together with pytorch
 
-Use the conda/mamba environment in the barlow_track.yaml file. Installation using mamba is tested on:
+Use the conda/mamba environment in the barlow_track.yaml file. Installation using mamba (and running) is tested on:
 - Rocky Linux
 - Ubuntu 22.04
-- Windows 11
 
 ### Install pytorch yourself
 
