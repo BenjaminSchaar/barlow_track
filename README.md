@@ -3,7 +3,10 @@ Using a modification of Barlow Twins (self-supervised learning) to track single-
 
 ## Installation
 
-Use the conda environment in the barlow_track.yaml file, or a wbfm conda environment (Zimmer lab specific).
+Use the conda environment in the barlow_track.yaml file. Tested on:
+- Rocky Linux
+- Ubuntu 22.04
+- Windows 11
 
 ## Training a network
 
