@@ -66,6 +66,10 @@ dependencies:
     - xlrd
     - submitit
     - kaleido
+    - torch_geometric
+    - torch-scatter
+    - torch-sparse
+    - --find-links https://data.pyg.org/whl/torch-2.1.0+cu121.html
     - git+https://github.com/Zimmer-lab/wbfm@main
     - git+https://github.com/Zimmer-lab/imutils@master
     - git+https://github.com/Zimmer-lab/barlow_track@main
