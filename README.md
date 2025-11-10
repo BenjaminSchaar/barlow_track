@@ -11,4 +11,4 @@ See instructions in the [project folder](barlow_track/barlow_project_template/RE
 
 ## Tracking using a network
 
-For now, this is implemented in the [wbfm pipeline](https://github.com/Zimmer-lab/wbfm)
+For now, this is implemented in the [wbfm pipeline](https://github.com/Zimmer-lab/wbfm/blob/main/docs/running_the_pipeline.md)
