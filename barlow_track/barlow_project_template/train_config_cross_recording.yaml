@@ -1,0 +1,91 @@
+# Cross-recording Barlow Twins training config (v0.3)
+#
+# Trains a single Barlow network using positive pairs across multiple recordings.
+# Same neuron type from different worms = positive pair.
+#
+# See also: train_config.yaml for single-recording training
+#
+# Usage:
+#   python barlow_track/scripts/train_barlow_cross_recording.py -p /path/to/this/config.yaml
+
+# ── Recording paths ──────────────────────────────────────────────
+# Dict mapping recording_id -> project_path
+# All recordings must use the same Barlow network (same concentration/imaging setup)
+#
+# Best 3 recordings by neuron ID overlap (79 shared types across all 3)
+# Selected from Itamar's 1per mutant screen recordings
+# Mixed genotypes: control, tmc1, asic1_del1 (strain-invariant training)
+project_paths:
+  control_1per_worm2: /lisc/data/scratch/neurobiology/zimmer/ItamarLev/WBFM/WBFM_projects/mutant_screen/2025-10-09_17-02_control_1per_worm2_vulvaL-2025-10-09
+  tmc1_1per_worm1: /lisc/data/scratch/neurobiology/zimmer/ItamarLev/WBFM/WBFM_projects/mutant_screen/2025-11-06_15-48_tmc1_1per_worm1-2025-11-06
+  asic1_del1_1per_worm3: /lisc/data/scratch/neurobiology/zimmer/ItamarLev/WBFM/WBFM_projects/mutant_screen/2025-11-06_17-00_asic1_del1_1per_worm3-2025-11-06
+
+# ── Pretrained model (optional) ─────────────────────────────────
+pretrained_model_path: null
+
+# ── W&B logging ──────────────────────────────────────────────────
+wandb_name: barlow-cross-recording-v03
+wandb_username: null
+
+# ── Architecture (match production v0.2 models) ─────────────────
+projector: '2048-2048'
+projector_final: 512
+embedding_dim: 2048
+
+backbone_kwargs:
+  num_levels: 2
+  f_maps: 4
+
+# ── Crop size ────────────────────────────────────────────────────
+target_sz_z: 8
+target_sz_xy: 64
+
+# ── Augmentation ─────────────────────────────────────────────────
+p_RandomAffine_base: 1.0
+p_RandomBlur_base: 0.1
+p_RandomAffine_flip: 1.0
+p_RandomBlur: 0.0
+p_RandomAffine: 1.0
+p_RandomElasticDeformation: 1.0
+zxy_RandomElasticDeformation: [1, 3, 3]
+p_RandomNoise: 0.1
+std_RandomNoise: 0.25
+
+# ── Loss hyperparameters ────────────────────────────────────────
+lambd: 0.0051
+lambd_obj: 0.67
+
+# ── Training schedule ────────────────────────────────────────────
+epochs: 200
+lr: 0.0001
+
+# ── Data loading ─────────────────────────────────────────────────
+num_frames_per_recording: 100
+cross_batch_size: 50
+steps_per_epoch: 100
+
+# ── Training data validation ────────────────────────────────────
+# Minimum recordings a neuron type must appear in to be used for
+# cross-recording positive pairs. Types below this threshold still
+# participate in within-recording batches as negatives.
+# Minimum: 2, no upper limit.
+min_recordings_per_type: 2
+
+# Run annotation_consistency check before training (requires annotation_consistency tool)
+validate_annotations: false
+
+# ── Curriculum phases ────────────────────────────────────────────
+# Each phase: end_epoch (exclusive) and p_cross (probability of cross-recording batch)
+curriculum_phases:
+  - {end_epoch: 50, p_cross: 0.0}      # Phase A: within-recording warm-up
+  - {end_epoch: 150, p_cross: 0.5}     # Phase B: 50/50 mix
+  - {end_epoch: 200, p_cross: 1.0}     # Phase C: pure cross-recording fine-tuning
+
+# ── Reproducibility ──────────────────────────────────────────────
+seed: 42
+
+# ── Logging ──────────────────────────────────────────────────────
+print_freq: 50
+rank: 0
+dryrun: false
+DEBUG: false

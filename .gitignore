@@ -169,3 +169,4 @@ barlow_track/scripts/wandb/
 *.pth
 *.ipynb
 barlow_track/notebooks/wandb
+.gitnexus
